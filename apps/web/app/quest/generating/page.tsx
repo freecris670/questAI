@@ -22,7 +22,7 @@ const GeneratingQuestPage = () => {
       setCurrentHintIndex((prevIndex) => (prevIndex + 1) % hints.length);
     }, 3000);
 
-    const totalDuration = 12500; // ms (12.5 seconds for 10-15s range)
+    const totalDuration = 3000; // ms (3 seconds for auto-redirect example)
     const updateInterval = 100; // ms
     const progressIncrement = (100 / (totalDuration / updateInterval));
 
@@ -30,7 +30,9 @@ const GeneratingQuestPage = () => {
       setProgress((prevProgress) => {
         if (prevProgress >= 100) {
           clearInterval(progressTimer);
-          console.log('Generation complete!'); // Placeholder for navigation/action
+          // TODO: Заменить '123-abc' на реальный ID созданного квеста
+          const createdQuestId = 'sample-quest-auto-redirect'; // Example ID for auto-redirect
+          router.push(`/quest/${createdQuestId}`);
           return 100;
         }
         return prevProgress + progressIncrement;

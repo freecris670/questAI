@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, ChevronRight, FileText } from 'lucide-react';
+import { MainHeader } from '@/components/layout/MainHeader';
+import { MainFooter } from '@/components/layout/MainFooter';
 
 // Временные данные для квестов
 const questsData = [
@@ -98,8 +100,9 @@ const QuestCard: React.FC<QuestCardProps> = ({ id, title, description, status, p
 
 export default function MyQuestsPage() {
   return (
-    <div className="min-h-screen bg-[#F7F9FB] py-5 px-4 md:px-6 lg:px-8">
-      <div className="max-w-[1200px] mx-auto">
+    <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
+      <MainHeader />
+      <main className="flex-grow container mx-auto max-w-[1200px] px-4 md:px-6 lg:px-8 py-5 pt-20">
         <h1 className="text-3xl md:text-4xl font-semibold text-[#2553A1] mb-6">Мои квесты</h1>
 
         <Card className="mb-6 bg-white p-4 border border-[#E3E6EA] rounded-md">
@@ -164,7 +167,8 @@ export default function MyQuestsPage() {
             <Button variant="outline" size="sm" className="rounded-md">Вперед »</Button>
           </div>
         )}
-      </div>
+      </main>
+      <MainFooter />
     </div>
   );
 }

@@ -5,7 +5,16 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@questai/ui"],
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
   },
   experimental: {
     serverActions: {
