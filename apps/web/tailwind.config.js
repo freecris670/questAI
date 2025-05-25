@@ -50,6 +50,14 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Custom QuestAI colors
+        'quest-blue': '#2553A1',
+        'quest-emerald': '#22B07D',
+        'quest-gray-text': '#64748B',
+        'quest-gray-border': '#E3E6EA',
+        'quest-cancel-red': '#DF3F40',
+        'quest-bg-light': '#F7F9FB',
+        'quest-blue-rgb': '37, 83, 161',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -65,10 +73,22 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: 0 },
         },
+        // Custom QuestAI animations
+        'spin-slow': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        'spin-slow-reverse': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(-360deg)' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        // Custom QuestAI animations
+        'spin-slow': 'spin-slow 2s linear infinite',
+        'spin-slow-reverse': 'spin-slow-reverse 2s linear infinite',
       },
     },
   },

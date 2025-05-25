@@ -1,6 +1,11 @@
+"use client";
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/textarea';
+import { MainHeader } from '@/components/layout/MainHeader';
+import { MainFooter } from '@/components/layout/MainFooter';
 
 // Временная иконка-заглушка. В идеале использовать библиотеку иконок, например lucide-react.
 const PlaceholderIcon = ({ className }: { className?: string }) => (
@@ -10,27 +15,17 @@ const PlaceholderIcon = ({ className }: { className?: string }) => (
 );
 
 export default function HomePage() {
-  return (
-    <div className="bg-[#F7F9FB] min-h-screen text-gray-800">
-      {/* Хедер */}
-      <header className="bg-white shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-        <div className="container mx-auto max-w-[1200px] h-[80px] flex items-center justify-between px-5">
-          <Link href="/" className="text-[#2553A1] text-2xl font-bold">
-            QuestAI
-          </Link>
-          <nav className="flex items-center gap-3 md:gap-4">
-            <Button variant="outline" className="border-[#2553A1] text-[#2553A1] hover:bg-[#2553A1]/10 hover:text-[#2553A1] px-4 py-2 rounded-md text-sm md:text-base h-auto">
-              Вход
-            </Button>
-            <Button className="bg-[#22B07D] hover:bg-[#22B07D]/90 text-white px-4 py-2 rounded-md text-sm md:text-base h-auto">
-              Регистрация
-            </Button>
-          </nav>
-        </div>
-      </header>
+  const router = useRouter();
 
-      {/* Основной контент - белая центральная панель */}
-      <main className="container mx-auto max-w-[1200px] bg-white px-5 py-5 md:py-10 my-5 rounded-lg shadow-lg">
+  const handleCreateQuest = () => {
+    // TODO: Later, get quest description from Textarea and pass to API/generating page
+    router.push('/quest/generating');
+  };
+  return (
+    <div className="bg-[#F7F9FB] min-h-screen text-gray-800 flex flex-col">
+      <MainHeader />
+      {/* Основной контент - белая центральная панель, добавляем pt-20 для отступа от фиксированного хедера */} 
+      <main className="container mx-auto max-w-[1200px] px-5 py-5 md:py-10 my-5 flex-grow pt-20">
         
         {/* Hero-секция */}
         <section className="text-center pt-8 pb-12 md:pt-12 md:pb-16">
@@ -49,7 +44,10 @@ export default function HomePage() {
               placeholder="Опишите ваш квест..."
               className="h-[120px] border-[#E3E6EA] rounded-md focus:border-[#2553A1] resize-none w-full p-3 text-base"
             />
-            <Button className="w-full h-[48px] bg-[#22B07D] hover:bg-[#22B07D]/90 text-white font-medium text-base rounded-md mt-6">
+            <Button 
+              onClick={handleCreateQuest}
+              className="w-full h-[48px] bg-[#22B07D] hover:bg-[#22B07D]/90 text-white font-medium text-base rounded-md mt-6"
+            >
               Создать квест
             </Button>
           </div>
@@ -79,18 +77,7 @@ export default function HomePage() {
           </div>
         </section>
       </main>
-
-      {/* Футер */}
-      <footer className="py-8 md:py-12"> {/* Фон футера совпадает с фоном страницы */}
-        <div className="container mx-auto max-w-[1200px] px-5">
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 text-[#64748B] text-sm mb-6">
-            <Link href="/about" className="hover:text-[#2553A1] transition-colors">О сервисе</Link>
-            <Link href="/contact" className="hover:text-[#2553A1] transition-colors">Контакты</Link>
-            <Link href="/privacy" className="hover:text-[#2553A1] transition-colors">Политика конфиденциальности</Link>
-          </div>
-          <p className="text-xs text-slate-500 text-center">&copy; {new Date().getFullYear()} QuestAI. Все права защищены.</p>
-        </div>
-      </footer>
+      <MainFooter />
     </div>
   );
 }
