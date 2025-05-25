@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input'; // Assuming you have an Input component from Shadcn/ui
 import { X } from 'lucide-react'; // For the close icon
 
