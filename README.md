@@ -2,88 +2,108 @@
 
 QuestAI - это веб-приложение, которое превращает обычные задачи в увлекательные квесты с помощью искусственного интеллекта.
 
-## Стек технологий
+## Технологический стек
 
-### Фронтенд
-- **Next.js** - SSR/SSG + API-роуты
-- **TailwindCSS** - утилитарный CSS
-- **Shadcn UI** - библиотека готовых компонентов
-- **React Query** - запросы к API и кеширование
+### Frontend
+- Next.js (SSR/SSG + API-роуты)
+- TailwindCSS (утилитарный CSS)
+- Shadcn UI (библиотека готовых компонентов)
+- React Query (запросы к API и кеширование)
 
-### Бэкенд
-- **NestJS** - структурированный Node.js-фреймворк
+### Backend
+- NestJS (структурированный Node.js-фреймворк)
 
 ### База данных / Аутентификация
-- **Supabase** - Postgres + Auth + Storage
+- Supabase - Postgres + Auth + Storage
 
 ### Инфраструктура
-- **Railway** - деплой бэкенда и фронта "в один клик"
+- Railway - деплой бэкенда и фронта "в один клик"
 
 ### AI-сервисы
-- **OpenAI API** - LLM для генерации квестов
+- OpenAI API - LLM для генерации квестов
 
 ### Платежи
-- **CloudPayments** - веб- и мобильные платежи
+- CloudPayments - веб- и мобильные платежи
 
 ## Структура проекта
 
-Проект организован как монорепозиторий с использованием npm workspaces:
+Проект организован как монорепозиторий с использованием Turborepo и pnpm:
 
 ```
 questAI/
-├── apps/            # Клиентские приложения
-│   └── web/         # Next.js веб-приложение
-└── packages/        # Пакеты и сервисы
-    └── api/         # NestJS API сервер
+├── apps/
+│   ├── web/            # Next.js фронтенд
+│   └── api/            # NestJS бэкенд
+├── packages/
+│   └── ui/             # Общие UI компоненты
+└── supabase/
+    └── migrations/     # SQL миграции для Supabase
 ```
 
 ## Установка и запуск
 
-### Требования
-- Node.js v18+
-- npm v9+
+### Предварительные требования
 
-### Подготовка проекта
+- Node.js 18+
+- pnpm 8+
+- Supabase аккаунт и проект
+
+### Установка зависимостей
+
 ```bash
-# Клонирование репозитория
-git clone https://github.com/yourusername/questAI.git
-cd questAI
+# Установка pnpm (если еще не установлен)
+npm install -g pnpm
 
 # Установка зависимостей
-npm install
+pnpm install
 ```
 
 ### Настройка переменных окружения
-Создайте `.env` файлы:
 
-1. Для API (packages/api/.env):
-```
-OPENAI_API_KEY=ваш_ключ_openai
+1. Скопируйте файлы примеров переменных окружения:
+
+```bash
+cp apps/web/.env.example apps/web/.env.local
+cp apps/api/.env.example apps/api/.env
 ```
 
-2. Для Web (apps/web/.env.local):
-```
-NEXT_PUBLIC_API_URL=http://localhost:3001
-```
+2. Заполните переменные окружения в созданных файлах:
+   - Данные Supabase (URL, ключи)
+   - API ключ OpenAI
+   - Данные CloudPayments
+
+### Настройка базы данных
+
+1. Создайте проект в [Supabase](https://supabase.com)
+2. Запустите SQL миграции из директории `supabase/migrations`
 
 ### Запуск для разработки
-```bash
-# Запуск всех сервисов одновременно
-npm run dev
 
-# Или запуск отдельных частей
-npm run dev:web  # Только фронтенд
-npm run dev:api  # Только API
+```bash
+# Запуск всех приложений
+pnpm dev
+
+# Запуск только фронтенда
+pnpm --filter @questai/web dev
+
+# Запуск только бэкенда
+pnpm --filter @questai/api dev
+```
+
+### Сборка для продакшена
+
+```bash
+pnpm build
 ```
 
 ## Деплой
 
 Проект настроен для деплоя на Railway:
 
-1. Создайте проект на Railway
+1. Создайте проект в [Railway](https://railway.app)
 2. Подключите репозиторий
 3. Настройте переменные окружения
-4. Railway автоматически определит структуру монорепозитория и развернет все сервисы
+4. Запустите деплой
 
 ## Лицензия
 
