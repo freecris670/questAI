@@ -2,10 +2,13 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MainHeader } from '@/components/layout/MainHeader';
 import { MainFooter } from '@/components/layout/MainFooter';
+import { TrialLimitModal } from '@/components/modals/TrialLimitModal';
+import axios from 'axios';
 
 // Временная иконка-заглушка. В идеале использовать библиотеку иконок, например lucide-react.
 const PlaceholderIcon = ({ className }: { className?: string }) => (
@@ -16,10 +19,62 @@ const PlaceholderIcon = ({ className }: { className?: string }) => (
 
 export default function HomePage() {
   const router = useRouter();
+  const [questDescription, setQuestDescription] = useState('');
+  const [questsCreated, setQuestsCreated] = useState(0);
+  const [maxTrialQuests, setMaxTrialQuests] = useState(2);
+  const [showTrialLimitModal, setShowTrialLimitModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // API URL
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-  const handleCreateQuest = () => {
-    // TODO: Later, get quest description from Textarea and pass to API/generating page
-    router.push('/quest/generating');
+  // При загрузке страницы получаем информацию о лимите пробных квестов с сервера
+  useEffect(() => {
+    const checkTrialLimit = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/quests/trial/check-limit`);
+        const { canCreate, questsCreated, maxTrialQuests } = response.data;
+        
+        setQuestsCreated(questsCreated);
+        setMaxTrialQuests(maxTrialQuests);
+        
+        // Если пользователь уже достиг лимита, показываем модальное окно
+        if (!canCreate) {
+          setShowTrialLimitModal(true);
+        }
+      } catch (error) {
+        console.error('Ошибка при проверке лимита пробных квестов:', error);
+      }
+    };
+    
+    checkTrialLimit();
+  }, [API_URL]);
+
+  const handleCreateQuest = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    
+    try {
+      // Сначала проверяем лимит пробных квестов
+      const response = await axios.get(`${API_URL}/quests/trial/check-limit`);
+      const { canCreate, questsCreated } = response.data;
+      
+      // Если пользователь достиг лимита квестов в пробной версии
+      if (!canCreate) {
+        setShowTrialLimitModal(true);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Увеличиваем счетчик на сервере
+      await axios.post(`${API_URL}/quests/trial/increment`);
+      
+      // Переходим на страницу генерации квеста
+      router.push('/quest/generating?description=' + encodeURIComponent(questDescription));
+    } catch (error) {
+      console.error('Ошибка при создании квеста:', error);
+      setIsLoading(false);
+    }
   };
   return (
     <div className="bg-[#F7F9FB] min-h-screen text-gray-800 flex flex-col">
@@ -43,12 +98,15 @@ export default function HomePage() {
             <Textarea
               placeholder="Опишите ваш квест..."
               className="h-[120px] border-[#E3E6EA] rounded-md focus:border-[#2553A1] resize-none w-full p-3 text-base"
+              value={questDescription}
+              onChange={(e) => setQuestDescription(e.target.value)}
             />
             <Button 
               onClick={handleCreateQuest}
               className="w-full h-[48px] bg-[#22B07D] hover:bg-[#22B07D]/90 text-white font-medium text-base rounded-md mt-6"
+              disabled={isLoading}
             >
-              Создать квест
+              {isLoading ? 'Создание...' : 'Создать квест'}
             </Button>
           </div>
         </section>
@@ -78,6 +136,16 @@ export default function HomePage() {
         </section>
       </main>
       <MainFooter />
+      
+      {/* Модальное окно ограничения пробного доступа */}
+      {showTrialLimitModal && (
+        <TrialLimitModal
+          isOpen={showTrialLimitModal}
+          onClose={() => setShowTrialLimitModal(false)}
+          questsCreated={questsCreated}
+          maxTrialQuests={maxTrialQuests}
+        />
+      )}
     </div>
   );
 }

@@ -72,7 +72,7 @@ export default function DetailedQuestPage({ params }: PageProps) {
             
             {/* Задачи */}
             <div className="mt-8">
-              <QuestTasks tasks={subtasks} activeTaskId={activeTaskId} />
+              <QuestTasks tasks={subtasks} activeTaskId={activeTaskId} questId={id} />
             </div>
             
             {/* Достижения */}

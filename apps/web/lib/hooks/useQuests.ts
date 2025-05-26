@@ -96,3 +96,31 @@ export function useGenerateQuest() {
     }
   });
 }
+
+/**
+ * Хук для обновления прогресса задачи квеста
+ * @param questId ID квеста
+ */
+export function useUpdateTaskProgress(questId: string) {
+  return useMutation({
+    mutationFn: async (data: {
+      taskId: string;
+      completed: boolean;
+      progress?: number;
+    }) => {
+      const response = await fetch(`/api/quests/${questId}/progress`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка при обновлении прогресса задачи');
+      }
+
+      return response.json();
+    }
+  });
+}

@@ -64,6 +64,7 @@ yarn.lock
 
 # Windsurf
 .windsurfrules
+.windsurf/
 
 # Дизайн
 дизайн страниц/
@@ -85,6 +86,6 @@ dist/
 **/openai-keys.json
 
 design/
-.windsurf/
+
 
 windsurf_deployment.yaml

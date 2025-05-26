@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { OpenAiService } from '../openai/openai.service';
 import { CreateQuestDto, UpdateQuestDto, GenerateQuestDto, UpdateQuestProgressDto, PublishQuestDto } from './dto';
@@ -41,17 +41,93 @@ export class QuestsService {
    * Получение квеста по ID
    */
   async findOne(id: string): Promise<IQuestDetails> {
-    const { data, error } = await this.supabaseService.client
+    const { data: quest, error } = await this.supabaseService.client
       .from('quests')
       .select('*')
       .eq('id', id)
       .single();
 
     if (error) {
-      throw new Error(`Квест не найден: ${error.message}`);
+      throw new NotFoundException(`Квест не найден: ${error.message}`);
     }
 
-    return data;
+    // Получаем информацию о создателе квеста
+    const { data: creator, error: creatorError } = await this.supabaseService.client
+      .from('profiles')
+      .select('*')
+      .eq('id', quest.user_id)
+      .single();
+
+    if (creatorError) {
+      throw new Error(`Ошибка при получении информации о создателе: ${creatorError.message}`);
+    }
+
+    // Получаем задачи квеста
+    const { data: tasks, error: tasksError } = await this.supabaseService.client
+      .from('quest_tasks')
+      .select('*')
+      .eq('quest_id', id)
+      .order('order_num');
+
+    if (tasksError) {
+      throw new Error(`Ошибка при получении задач квеста: ${tasksError.message}`);
+    }
+
+    // Рассчитываем количество дней с момента создания
+    const createdDays = Math.floor((Date.now() - new Date(quest.created_at).getTime()) / (1000 * 60 * 60 * 24));
+
+    // Формируем полную структуру IQuestDetails
+    const questDetails: IQuestDetails = {
+      id: quest.id,
+      title: quest.title,
+      description: quest.description,
+      createdAt: quest.created_at,
+      isPublic: quest.is_public,
+      progress: 0, // Будет рассчитан позже
+      questType: quest.quest_type || 'adventure',
+      createdDays,
+      stages: quest.content?.stages || [],
+      currentStage: quest.content?.currentStage || 0,
+      activeTaskId: quest.content?.activeTaskId || '',
+      rewards: quest.content?.rewards || {
+        xp: 100,
+        gold: 50,
+        itemName: 'Награда за квест'
+      },
+      subtasks: tasks?.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description || '',
+        completed: false,
+        xp: task.xp,
+        progress: 0,
+        reward: task.xp > 0 ? `${task.xp} XP` : undefined
+      })) || [],
+      achievements: quest.content?.achievements || [],
+      stats: {
+        completion: 0,
+        tasksCompleted: 0,
+        totalTasks: tasks?.length || 0,
+        artifactsFound: 0,
+        totalArtifacts: quest.content?.totalArtifacts || 0,
+        xpEarned: 0,
+        totalXp: quest.content?.totalXp || 100,
+        timeInvested: '0 ч 0 мин'
+      },
+      user: {
+        level: creator.level,
+        levelProgress: this.calculateLevelProgress(creator.xp, creator.level),
+        xpNeeded: this.getXpForLevel(creator.level),
+        name: creator.name,
+        questsCreated: creator.quests_created,
+        questsCompleted: creator.quests_completed,
+        successRate: creator.quests_completed > 0 
+          ? Math.round((creator.quests_completed / (creator.quests_created || 1)) * 100) 
+          : 0
+      }
+    };
+
+    return questDetails;
   }
 
   /**
@@ -193,7 +269,7 @@ export class QuestsService {
       .from('user_task_progress')
       .upsert({
         task_id: progressData.taskId,
-        user_id: userId, // Используем реальный ID пользователя из контекста запроса
+        user_id: userId,
         completed: progressData.completed,
         progress: progressData.progress || (progressData.completed ? 100 : 0),
         completed_at: progressData.completed ? new Date().toISOString() : null
@@ -210,11 +286,11 @@ export class QuestsService {
       .select('id')
       .eq('quest_id', id);
       
-    // Затем получаем прогресс по этим задачам
+    // Затем получаем прогресс по этим задачам для данного пользователя
     const { data: tasksProgress, error: progressError } = await this.supabaseService.client
       .from('user_task_progress')
       .select('completed, progress')
-      .eq('user_id', 'user_id_placeholder')
+      .eq('user_id', userId)
       .in('task_id', questTasks?.map(task => task.id) || []);
         
     if (progressError) {
@@ -222,20 +298,31 @@ export class QuestsService {
     }
     
     // Рассчитываем общий прогресс квеста
-    const totalTasks = tasksProgress.length;
-    const completedTasks = tasksProgress.filter(t => t.completed).length;
-    const avgProgress = tasksProgress.reduce((sum, task) => sum + task.progress, 0) / totalTasks;
-    const questProgress = Math.round(avgProgress);
+    const totalTasks = questTasks?.length || 0;
+    const completedTasks = tasksProgress?.filter(t => t.completed).length || 0;
+    
+    let questProgress = 0;
+    if (totalTasks > 0) {
+      if (tasksProgress && tasksProgress.length > 0) {
+        const avgProgress = tasksProgress.reduce((sum, task) => sum + task.progress, 0) / totalTasks;
+        questProgress = Math.round(avgProgress);
+      }
+    }
     
     // Обновляем общий прогресс квеста
     await this.supabaseService.client
       .from('quest_completions')
       .upsert({
         quest_id: id,
-        user_id: 'user_id_placeholder', // здесь должен быть реальный ID пользователя из контекста запроса
+        user_id: userId,
         progress: questProgress,
         completed_at: questProgress >= 100 ? new Date().toISOString() : null
       });
+
+    // Если задача завершена, обновляем XP пользователя
+    if (progressData.completed) {
+      await this.updateUserXp(userId, task.xp);
+    }
       
     return {
       questProgress,
@@ -324,5 +411,138 @@ export class QuestsService {
       description: achievement.description,
       unlocked: progress ? achievement.unlocked || false : false
     }));
+  }
+
+  /**
+   * Обновление опыта пользователя
+   * @param userId ID пользователя
+   * @param xpToAdd Количество опыта для добавления
+   */
+  private async updateUserXp(userId: string, xpToAdd: number): Promise<void> {
+    // Получаем текущий профиль пользователя
+    const { data: profile, error: profileError } = await this.supabaseService.client
+      .from('profiles')
+      .select('xp, level')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      throw new Error(`Ошибка при получении профиля пользователя: ${profileError.message}`);
+    }
+
+    const newXp = profile.xp + xpToAdd;
+    let newLevel = profile.level;
+
+    // Проверяем, нужно ли повысить уровень
+    while (newXp >= this.getXpForLevel(newLevel)) {
+      newLevel++;
+    }
+
+    // Обновляем профиль пользователя
+    const { error: updateError } = await this.supabaseService.client
+      .from('profiles')
+      .update({
+        xp: newXp,
+        level: newLevel
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      throw new Error(`Ошибка при обновлении опыта пользователя: ${updateError.message}`);
+    }
+  }
+
+  /**
+   * Расчет необходимого опыта для достижения определенного уровня
+   */
+  private getXpForLevel(level: number): number {
+    // Простая формула: каждый уровень требует level * 100 опыта
+    return level * 100;
+  }
+  
+  /**
+   * Проверка количества созданных пробных квестов по IP-адресу
+   * @param ipAddress IP-адрес пользователя
+   * @returns Объект с информацией о количестве созданных квестов и лимите
+   */
+  async checkTrialQuestsLimit(ipAddress: string): Promise<{ canCreate: boolean; questsCreated: number; maxTrialQuests: number }> {
+    // Максимальное количество квестов для неавторизованных пользователей
+    const MAX_TRIAL_QUESTS = 2;
+    
+    // Получаем количество квестов, созданных с данного IP-адреса
+    const { data, error } = await this.supabaseService.client
+      .from('trial_quests_usage')
+      .select('quests_created')
+      .eq('ip_address', ipAddress)
+      .single();
+      
+    // Если записи нет, значит это первый квест пользователя
+    if (error || !data) {
+      return { canCreate: true, questsCreated: 0, maxTrialQuests: MAX_TRIAL_QUESTS };
+    }
+    
+    // Проверяем, не превышен ли лимит
+    const questsCreated = data.quests_created;
+    return { 
+      canCreate: questsCreated < MAX_TRIAL_QUESTS, 
+      questsCreated, 
+      maxTrialQuests: MAX_TRIAL_QUESTS
+    };
+  }
+  
+  /**
+   * Увеличивает счетчик созданных пробных квестов для IP-адреса
+   * @param ipAddress IP-адрес пользователя
+   * @returns Обновленное количество созданных квестов
+   */
+  async incrementTrialQuestsCount(ipAddress: string): Promise<number> {
+    // Получаем текущую запись для IP-адреса
+    const { data, error } = await this.supabaseService.client
+      .from('trial_quests_usage')
+      .select('quests_created')
+      .eq('ip_address', ipAddress)
+      .single();
+      
+    if (error || !data) {
+      // Если записи нет, создаем новую с счетчиком 1
+      const { data: newData, error: insertError } = await this.supabaseService.client
+        .from('trial_quests_usage')
+        .insert({ ip_address: ipAddress, quests_created: 1 })
+        .select('quests_created')
+        .single();
+        
+      if (insertError) {
+        throw new Error(`Ошибка при создании записи о пробных квестах: ${insertError.message}`);
+      }
+      
+      return newData.quests_created;
+    } else {
+      // Иначе увеличиваем счетчик на 1
+      const newCount = data.quests_created + 1;
+      const { data: updatedData, error: updateError } = await this.supabaseService.client
+        .from('trial_quests_usage')
+        .update({ quests_created: newCount })
+        .eq('ip_address', ipAddress)
+        .select('quests_created')
+        .single();
+        
+      if (updateError) {
+        throw new Error(`Ошибка при обновлении счетчика пробных квестов: ${updateError.message}`);
+      }
+      
+      return updatedData.quests_created;
+    }
+  }
+
+  /**
+   * Вспомогательный метод для расчета прогресса уровня
+   */
+  private calculateLevelProgress(currentXp: number, level: number): number {
+    const xpForCurrentLevel = this.getXpForLevel(level - 1);
+    const xpForNextLevel = this.getXpForLevel(level);
+    const xpInCurrentLevel = currentXp - xpForCurrentLevel;
+    const xpNeededForLevel = xpForNextLevel - xpForCurrentLevel;
+    
+    return Math.round((xpInCurrentLevel / xpNeededForLevel) * 100);
   }
 }

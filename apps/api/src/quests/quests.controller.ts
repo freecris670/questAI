@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, UseGuards, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { QuestsService } from './quests.service';
 import { CreateQuestDto, GenerateQuestDto, UpdateQuestDto, UpdateQuestProgressDto, PublishQuestDto } from './dto';
@@ -103,5 +104,31 @@ export class QuestsController {
     @Param('id') id: string
   ) {
     return this.questsService.getAchievements(id, userId);
+  }
+  
+  @Get('trial/check-limit')
+  @ApiOperation({ summary: 'Проверка лимита созданных пробных квестов' })
+  async checkTrialQuestsLimit(@Req() request: Request) {
+    // Получаем IP-адрес из заголовков
+    let ipAddress = request.headers['x-forwarded-for'];
+    if (Array.isArray(ipAddress)) {
+      ipAddress = ipAddress[0];
+    }
+    // Используем фолбэк для локальной разработки
+    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
+    return this.questsService.checkTrialQuestsLimit(ipAddress as string || remoteAddress);
+  }
+  
+  @Post('trial/increment')
+  @ApiOperation({ summary: 'Увеличение счетчика пробных квестов' })
+  async incrementTrialQuestsCount(@Req() request: Request) {
+    // Получаем IP-адрес из заголовков
+    let ipAddress = request.headers['x-forwarded-for'];
+    if (Array.isArray(ipAddress)) {
+      ipAddress = ipAddress[0];
+    }
+    // Используем фолбэк для локальной разработки
+    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
+    return { questsCreated: await this.questsService.incrementTrialQuestsCount(ipAddress as string || remoteAddress) };
   }
 }

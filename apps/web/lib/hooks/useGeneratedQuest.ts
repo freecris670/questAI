@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { IGeneratedQuestData } from '@/components/quests/GeneratedQuestDisplay';
-import { generateMockQuestData } from '@/lib/utils/mockQuestData';
+import { useGenerateQuest, useCreateQuest } from '@/lib/hooks/useQuests';
 
 interface UseGeneratedQuestOptions {
   initialData?: IGeneratedQuestData | null;
@@ -12,7 +12,11 @@ interface UseGeneratedQuestResult {
   questData: IGeneratedQuestData | null;
   isLoading: boolean;
   error: Error | null;
-  generateNewQuest: () => void;
+  generateNewQuest: (params?: {
+    theme?: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    additionalDetails?: string;
+  }) => void;
   startQuest: () => void;
   shareQuest: () => void;
 }
@@ -32,16 +36,27 @@ export function useGeneratedQuest({
   const [isLoading, setIsLoading] = useState<boolean>(!initialData);
   const [error, setError] = useState<Error | null>(null);
 
+  // Мутации для взаимодействия с бекендом
+  const generateQuestMutation = useGenerateQuest();
+  const createQuestMutation = useCreateQuest();
+
   // Функция для генерации нового квеста
-  const generateNewQuest = useCallback(() => {
+  const generateNewQuest = useCallback(async (params?: {
+    theme?: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    additionalDetails?: string;
+  }) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      // В реальном приложении здесь будет API-запрос к бэкенду
-      // для генерации квеста с помощью OpenAI
-      // Сейчас используем моковые данные для демонстрации
-      const newQuestData = generateMockQuestData();
+      const finalParams = {
+        theme: params?.theme ?? 'Random',
+        difficulty: params?.difficulty ?? 'easy',
+        ...(params?.additionalDetails ? { additionalDetails: params.additionalDetails } : {})
+      };
+
+      const newQuestData = await generateQuestMutation.mutateAsync(finalParams);
       setQuestData(newQuestData);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Произошла ошибка при генерации квеста'));
@@ -49,19 +64,27 @@ export function useGeneratedQuest({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [generateQuestMutation]);
 
-  // Функция для запуска квеста
-  const startQuest = useCallback(() => {
+  // Функция для запуска квеста (сохраняем квест в базе)
+  const startQuest = useCallback(async () => {
     if (!questData) return;
-    
-    console.log('Запуск квеста:', questData.title);
-    
-    // Вызываем колбэк, если он был передан
-    if (onStartCallback) {
-      onStartCallback(questData);
+
+    try {
+      await createQuestMutation.mutateAsync({
+        title: questData.title,
+        description: questData.story,
+        content: questData as unknown as Record<string, unknown>,
+      });
+
+      if (onStartCallback) {
+        onStartCallback(questData);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Не удалось запустить квест'));
+      console.error('Ошибка запуска квеста:', err);
     }
-  }, [questData, onStartCallback]);
+  }, [questData, onStartCallback, createQuestMutation]);
 
   // Функция для шеринга квеста
   const shareQuest = useCallback(() => {

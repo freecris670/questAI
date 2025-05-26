@@ -3,17 +3,56 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check as CheckIcon, Trophy as TrophyIcon } from 'lucide-react';
 import { QuestTask } from '../types';
+import { useUpdateTaskProgress } from '@/lib/hooks/useQuests';
+import { useState } from 'react';
 
 interface QuestTasksProps {
   tasks: QuestTask[];
   activeTaskId: string;
+  questId: string;
 }
 
-export function QuestTasks({ tasks, activeTaskId }: QuestTasksProps) {
+export function QuestTasks({ tasks, activeTaskId, questId }: QuestTasksProps) {
+  const [localTasks, setLocalTasks] = useState<QuestTask[]>(tasks);
+  const updateTaskMutation = useUpdateTaskProgress(questId);
+  
   // Функция для обработки изменения состояния чекбокса
-  const handleCheckboxChange = (taskId: string) => {
-    // Здесь будет логика изменения состояния задачи
-    console.log(`Изменено состояние задачи ${taskId}`);
+  const handleCheckboxChange = async (taskId: string) => {
+    try {
+      // Найдем задачу в локальном состоянии
+      const taskIndex = localTasks.findIndex(task => task.id === taskId);
+      if (taskIndex === -1) return;
+      
+      const task = localTasks[taskIndex];
+      const newCompletedStatus = !task.completed;
+      
+      // Обновляем в UI до получения ответа от сервера для лучшего UX
+      const updatedTasks = [...localTasks];
+      updatedTasks[taskIndex] = {
+        ...task,
+        completed: newCompletedStatus,
+        progress: newCompletedStatus ? 100 : task.progress
+      };
+      setLocalTasks(updatedTasks);
+      
+      // Отправляем на сервер
+      await updateTaskMutation.mutateAsync({
+        taskId,
+        completed: newCompletedStatus,
+        progress: newCompletedStatus ? 100 : task.progress
+      });
+      
+      // Показываем уведомление
+      if (newCompletedStatus) {
+        alert(`Задача выполнена! Вы получили ${task.xp} XP за выполнение задачи`);
+      }
+    } catch (error) {
+      console.error('Ошибка при обновлении статуса задачи:', error);
+      alert('Ошибка: Не удалось обновить статус задачи');
+      
+      // Возвращаем исходное состояние задачи в случае ошибки
+      setLocalTasks([...tasks]);
+    }
   };
 
   // Проверка наличия подзадач (в данной моковой версии считаем, что подзадач нет)
@@ -29,7 +68,7 @@ export function QuestTasks({ tasks, activeTaskId }: QuestTasksProps) {
       </CardHeader>
       <CardContent className="pt-2">
         <div className="space-y-4">
-          {tasks.map((task, index) => {
+          {localTasks.map((task, index) => {
             const hasTaskSubtasks = hasSubtasks(task.id);
             const fillProgress = !task.completed && task.progress > 0;
             
