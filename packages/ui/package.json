@@ -2,10 +2,11 @@
   "name": "@questai/ui",
   "version": "0.1.0",
   "private": true,
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsup --watch",
     "lint": "eslint . --ext .ts,.tsx",
     "ui:add": "pnpm dlx shadcn-ui@latest add"

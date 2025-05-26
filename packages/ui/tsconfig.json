@@ -10,8 +10,9 @@
     "sourceMap": true,
     "composite": true,
     "incremental": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "emitDeclarationOnly": true
   },
-  "include": ["src/**/*", "./index.ts", "src/components/index.ts", "src/components/button.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }
