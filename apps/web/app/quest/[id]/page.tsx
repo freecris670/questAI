@@ -3,6 +3,7 @@
 import { ChevronLeft as ChevronLeftIcon } from 'lucide-react';
 import { MainHeader } from '@/components/layout/MainHeader';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
 // Импорт компонентов
@@ -26,8 +27,10 @@ interface PageProps {
 /**
  * Детальная страница квеста, содержащая информацию о квесте, задачах, наградах и достижениях
  */
-export default function DetailedQuestPage({ params }: PageProps) {
-  const { id } = params;
+export default function DetailedQuestPage() {
+  // В Next.js 15+ используем useParams для получения параметров маршрута
+  const params = useParams();
+  const id = params.id as string;
   const [quest, setQuest] = useState<QuestDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -44,7 +44,7 @@ export default function DetailedQuestPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <MainHeader />
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 mt-24">
         <div className="flex items-center mb-6">
           <Link href="/quests" className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
             <ChevronLeftIcon size={16} className="mr-1" /> 
@@ -52,7 +52,7 @@ export default function DetailedQuestPage({ params }: PageProps) {
           </Link>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Левая панель - основная информация */}
           <div className="lg:col-span-8">
             {/* Заголовок квеста */}
@@ -66,13 +66,19 @@ export default function DetailedQuestPage({ params }: PageProps) {
             />
             
             {/* Награды */}
-            <QuestRewardsSection rewards={rewards} />
+            <div className="mt-8">
+              <QuestRewardsSection rewards={rewards} />
+            </div>
             
             {/* Задачи */}
-            <QuestTasks tasks={subtasks} activeTaskId={activeTaskId} />
+            <div className="mt-8">
+              <QuestTasks tasks={subtasks} activeTaskId={activeTaskId} />
+            </div>
             
             {/* Достижения */}
-            <QuestAchievements achievements={achievements} />
+            <div className="mt-8">
+              <QuestAchievements achievements={achievements} />
+            </div>
           </div>
           
           {/* Правая панель - статистика */}
