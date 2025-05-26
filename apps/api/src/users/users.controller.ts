@@ -1,6 +1,9 @@
-import { Controller, Get, Put, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Put, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiParam, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { UserProfileDto, UserStatsDto } from './dto';
+import { IQuest } from '../interfaces/quest.interfaces';
+import { SupabaseAuthGuard, User } from '../supabase/supabase.module';
 
 @ApiTags('Пользователи')
 @Controller('users')
@@ -43,5 +46,32 @@ export class UsersController {
   @ApiBearerAuth()
   async getUserSubscription(@Param('id') userId: string) {
     return this.usersService.getUserSubscription(userId);
+  }
+  
+  @Get('profile')
+  @ApiOperation({ summary: 'Получить данные профиля авторизованного пользователя' })
+  @ApiResponse({ status: 200, description: 'Профиль пользователя', type: UserProfileDto })
+  @ApiBearerAuth()
+  @UseGuards(SupabaseAuthGuard)
+  async getCurrentUserProfile(@User('id') userId: string) {
+    return this.usersService.getUserProfile(userId);
+  }
+  
+  @Get('stats')
+  @ApiOperation({ summary: 'Получить статистику авторизованного пользователя' })
+  @ApiResponse({ status: 200, description: 'Статистика пользователя', type: UserStatsDto })
+  @ApiBearerAuth()
+  @UseGuards(SupabaseAuthGuard)
+  async getCurrentUserStats(@User('id') userId: string) {
+    return this.usersService.getUserStats(userId);
+  }
+  
+  @Get('quests/active')
+  @ApiOperation({ summary: 'Получить список активных квестов пользователя' })
+  @ApiResponse({ status: 200, description: 'Список активных квестов', type: [Object] })
+  @ApiBearerAuth()
+  @UseGuards(SupabaseAuthGuard)
+  async getActiveQuests(@User('id') userId: string) {
+    return this.usersService.getActiveQuests(userId);
   }
 }

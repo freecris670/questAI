@@ -34,35 +34,59 @@ export class OpenAiService implements OnModuleInit {
   }) {
     const { theme, complexity, length } = params;
 
-    const prompt = `Создай интерактивный квест на тему "${theme}". 
+    const prompt = `Создай геймифицированный квест в стиле MMORPG на тему "${theme}". 
     Сложность: ${complexity}. 
     Длина: ${length}.
     
-    Формат ответа должен быть в JSON:
+    Формат ответа должен быть в JSON со следующей структурой:
     {
       "title": "Название квеста",
       "description": "Краткое описание квеста",
-      "startNode": "start",
-      "nodes": {
-        "start": {
-          "text": "Начальный текст квеста",
-          "choices": [
-            {
-              "text": "Вариант выбора 1",
-              "nextNode": "node1"
-            },
-            {
-              "text": "Вариант выбора 2",
-              "nextNode": "node2"
-            }
-          ]
+      "questType": "Тип квеста (например: adventure, learning, productivity, fitness)",
+      "difficulty": "${complexity}",
+      "tasks": [
+        {
+          "title": "Название задачи 1",
+          "description": "Подробное описание задачи 1"
         },
-        "node1": {
-          "text": "Текст для node1",
-          "choices": [...]
+        {
+          "title": "Название задачи 2",
+          "description": "Подробное описание задачи 2"
         },
-        ...
-      }
+        {
+          "title": "Название задачи 3",
+          "description": "Подробное описание задачи 3"
+        }
+      ],
+      "stages": [
+        {
+          "name": "Название этапа 1",
+          "completed": false
+        },
+        {
+          "name": "Название этапа 2",
+          "completed": false
+        }
+      ],
+      "rewards": {
+        "xp": 100,
+        "gold": 50,
+        "itemName": "Название награды"
+      },
+      "achievements": [
+        {
+          "id": "achievement1",
+          "title": "Название достижения 1",
+          "description": "Описание достижения 1",
+          "unlocked": false
+        },
+        {
+          "id": "achievement2",
+          "title": "Название достижения 2",
+          "description": "Описание достижения 2",
+          "unlocked": false
+        }
+      ]
     }`;
 
     try {
@@ -71,7 +95,7 @@ export class OpenAiService implements OnModuleInit {
         messages: [
           {
             role: 'system',
-            content: 'Ты - генератор интерактивных квестов. Создавай увлекательные и логичные истории с разветвленным сюжетом.',
+            content: 'Ты - генератор геймифицированных квестов в стиле MMORPG. Создавай интересные задачи, этапы, достижения и награды, которые мотивируют пользователя выполнять реальные задачи. Тематика квеста должна соответствовать запросу.',
           },
           {
             role: 'user',

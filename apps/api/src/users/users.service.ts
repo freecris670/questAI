@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { UserProfileDto, UserStatsDto } from './dto';
+import { IQuest } from '../interfaces/quest.interfaces';
 
 @Injectable()
 export class UsersService {
@@ -94,5 +96,33 @@ export class UsersService {
     }
 
     return data || { active: false, plan: 'free' };
+  }
+  
+  /**
+   * Получение списка активных квестов пользователя
+   */
+  async getActiveQuests(userId: string): Promise<IQuest[]> {
+    // Получаем все квесты, которые пользователь начал, но не завершил
+    const { data, error } = await this.supabaseService.client
+      .from('quest_completions')
+      .select('*, quests(*)')
+      .eq('user_id', userId)
+      .is('completed_at', null) // Выбираем только незавершенные квесты
+      .order('started_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Ошибка при получении активных квестов: ${error.message}`);
+    }
+    
+    // Преобразуем данные в формат IQuest
+    return data.map(item => ({
+      id: item.quests.id,
+      title: item.quests.title,
+      description: item.quests.description,
+      createdAt: item.quests.created_at,
+      isPublic: item.quests.is_public,
+      progress: item.progress,
+      questType: item.quests.quest_type || 'standard'
+    }));
   }
 }
