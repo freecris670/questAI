@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Brain } from 'lucide-react';
 import { MainHeader } from '@/components/layout/MainHeader';
 import { MainFooter } from '@/components/layout/MainFooter';
+import { loadSampleQuestData } from '@/lib/services/questData';
 
 const GeneratingQuestPage = () => {
   const router = useRouter();
@@ -30,9 +31,14 @@ const GeneratingQuestPage = () => {
       setProgress((prevProgress) => {
         if (prevProgress >= 100) {
           clearInterval(progressTimer);
-          // TODO: Заменить '123-abc' на реальный ID созданного квеста
-          const createdQuestId = 'sample-quest-auto-redirect'; // Example ID for auto-redirect
-          router.push(`/quest/${createdQuestId}`);
+          
+          // Получаем данные из JSON-файла
+          const questData = loadSampleQuestData();
+          // Генерируем уникальный ID для квеста
+          const randomId = `quest-${Math.random().toString(36).substring(2, 10)}`;
+          
+          // Перенаправление на страницу с детальным описанием квеста
+          router.push(`/quest/${randomId}`);
           return 100;
         }
         return prevProgress + progressIncrement;
@@ -43,7 +49,7 @@ const GeneratingQuestPage = () => {
       clearInterval(hintInterval);
       clearInterval(progressTimer);
     };
-  }, [hints.length]);
+  }, [hints.length, router]);
 
   return (
     <div className="min-h-screen bg-quest-bg-light flex flex-col">

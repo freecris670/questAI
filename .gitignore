@@ -84,3 +84,7 @@ dist/
 # Специфичные для OpenAI
 **/openai-keys.json
 
+design/
+.windsurf/
+
+windsurf_deployment.yaml

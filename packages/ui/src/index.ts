@@ -1,2 +1,2 @@
 // Re-export all components
-export * from './components';
+export * from './components/index';
