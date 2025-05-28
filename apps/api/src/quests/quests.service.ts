@@ -498,7 +498,12 @@ export class QuestsService {
    * @param ipAddress IP-адрес пользователя
    * @returns Объект с информацией о количестве созданных квестов и лимите
    */
-  async checkTrialQuestsLimit(ipAddress: string): Promise<{ canCreate: boolean; questsCreated: number; maxTrialQuests: number }> {
+  async checkTrialQuestsLimit(ipAddress: string): Promise<{ 
+    canCreate: boolean; 
+    questsCreated: number; 
+    maxTrialQuests: number; 
+    reason?: string; 
+  }> {
     // Максимальное количество квестов для неавторизованных пользователей
     const MAX_TRIAL_QUESTS = 2;
     
@@ -515,10 +520,41 @@ export class QuestsService {
         return { canCreate: true, questsCreated: 0, maxTrialQuests: MAX_TRIAL_QUESTS };
       }
       
-      // Проверяем, не превышен ли лимит
+      // Проверяем, не превышен ли лимит суммарного количества
       const questsCreated = data.quests_created;
+      if (questsCreated >= MAX_TRIAL_QUESTS) {
+        return { 
+          canCreate: false, 
+          questsCreated, 
+          maxTrialQuests: MAX_TRIAL_QUESTS,
+          reason: 'max_total_exceeded'
+        };
+      }
+      
+      // Проверяем ограничение на частоту запросов в минуту
+      const minuteRateLimit = await this.checkMinuteRateLimit(ipAddress);
+      if (!minuteRateLimit.canCreate) {
+        return { 
+          canCreate: false, 
+          questsCreated, 
+          maxTrialQuests: MAX_TRIAL_QUESTS,
+          reason: 'minute_rate_exceeded'
+        };
+      }
+      
+      // Проверяем ограничение на частоту запросов в час
+      const hourRateLimit = await this.checkHourRateLimit(ipAddress);
+      if (!hourRateLimit.canCreate) {
+        return { 
+          canCreate: false, 
+          questsCreated, 
+          maxTrialQuests: MAX_TRIAL_QUESTS,
+          reason: 'hour_rate_exceeded'
+        };
+      }
+      
       return { 
-        canCreate: questsCreated < MAX_TRIAL_QUESTS, 
+        canCreate: true, 
         questsCreated, 
         maxTrialQuests: MAX_TRIAL_QUESTS
       };
@@ -526,6 +562,107 @@ export class QuestsService {
       console.error('Ошибка при проверке лимита пробных квестов:', err);
       // В случае ошибки возвращаем безопасное значение - разрешаем создание
       return { canCreate: true, questsCreated: 0, maxTrialQuests: MAX_TRIAL_QUESTS };
+    }
+  }
+  
+  /**
+   * Проверка лимита запросов в минуту (не более 3 запросов в минуту)
+   * @param ipAddress IP-адрес пользователя
+   * @returns Объект с информацией о возможности создания
+   */
+  async checkMinuteRateLimit(ipAddress: string): Promise<{ canCreate: boolean; requestsInLastMinute: number }> {
+    try {
+      const MAX_REQUESTS_PER_MINUTE = 3;
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - 60 * 1000); // 1 минута назад
+      
+      // Получаем записи за последнюю минуту
+      const { data, error } = await this.supabaseService.adminClient
+        .from('quest_rate_limits')
+        .select('created_at')
+        .eq('ip_address', ipAddress)
+        .gte('created_at', oneMinuteAgo.toISOString())
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Ошибка при проверке лимита запросов в минуту:', error);
+        // В случае ошибки разрешаем запрос
+        return { canCreate: true, requestsInLastMinute: 0 };
+      }
+      
+      const requestsInLastMinute = data?.length || 0;
+      return {
+        canCreate: requestsInLastMinute < MAX_REQUESTS_PER_MINUTE,
+        requestsInLastMinute
+      };
+    } catch (err) {
+      console.error('Ошибка при проверке лимита запросов в минуту:', err);
+      // В случае ошибки разрешаем запрос
+      return { canCreate: true, requestsInLastMinute: 0 };
+    }
+  }
+  
+  /**
+   * Проверка лимита запросов в час (не более 20 запросов в час)
+   * @param ipAddress IP-адрес пользователя
+   * @returns Объект с информацией о возможности создания
+   */
+  async checkHourRateLimit(ipAddress: string): Promise<{ canCreate: boolean; requestsInLastHour: number }> {
+    try {
+      const MAX_REQUESTS_PER_HOUR = 20;
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000); // 1 час назад
+      
+      // Получаем записи за последний час
+      const { data, error } = await this.supabaseService.adminClient
+        .from('quest_rate_limits')
+        .select('created_at')
+        .eq('ip_address', ipAddress)
+        .gte('created_at', oneHourAgo.toISOString())
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Ошибка при проверке лимита запросов в час:', error);
+        // В случае ошибки разрешаем запрос
+        return { canCreate: true, requestsInLastHour: 0 };
+      }
+      
+      const requestsInLastHour = data?.length || 0;
+      return {
+        canCreate: requestsInLastHour < MAX_REQUESTS_PER_HOUR,
+        requestsInLastHour
+      };
+    } catch (err) {
+      console.error('Ошибка при проверке лимита запросов в час:', err);
+      // В случае ошибки разрешаем запрос
+      return { canCreate: true, requestsInLastHour: 0 };
+    }
+  }
+  
+  /**
+   * Регистрирует попытку создания квеста для отслеживания частоты запросов
+   * @param ipAddress IP-адрес пользователя
+   * @returns true если запись успешно создана
+   */
+  async recordQuestAttempt(ipAddress: string): Promise<boolean> {
+    try {
+      // Регистрируем попытку создания квеста
+      const { error } = await this.supabaseService.adminClient
+        .from('quest_rate_limits')
+        .insert({ 
+          ip_address: ipAddress, 
+          created_at: new Date().toISOString(),
+        });
+      
+      if (error) {
+        console.error('Ошибка при регистрации попытки создания квеста:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Ошибка при регистрации попытки создания квеста:', err);
+      return false;
     }
   }
   

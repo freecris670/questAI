@@ -44,8 +44,31 @@ export class QuestsController {
   @UseGuards(SupabaseAuthGuard)
   async generate(
     @User('id') userId: string,
-    @Body() generateQuestDto: GenerateQuestDto
+    @Body() generateQuestDto: GenerateQuestDto,
+    @Req() request: Request
   ): Promise<IGeneratedQuestData> {
+    // Получаем IP-адрес для отслеживания лимита
+    let ipAddress = request.headers['x-forwarded-for'];
+    if (Array.isArray(ipAddress)) {
+      ipAddress = ipAddress[0];
+    }
+    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
+    const ip = ipAddress as string || remoteAddress;
+    
+    // Проверяем лимиты частоты запросов (даже для авторизованных пользователей)
+    const minuteRateLimit = await this.questsService.checkMinuteRateLimit(ip);
+    if (!minuteRateLimit.canCreate) {
+      throw new Error('Превышен лимит запросов (3 в минуту). Пожалуйста, подождите.');
+    }
+    
+    const hourRateLimit = await this.questsService.checkHourRateLimit(ip);
+    if (!hourRateLimit.canCreate) {
+      throw new Error('Превышен лимит запросов (20 в час). Пожалуйста, подождите.');
+    }
+    
+    // Регистрируем попытку создания квеста
+    await this.questsService.recordQuestAttempt(ip);
+    
     return this.questsService.generateQuest(userId, generateQuestDto);
   }
 
@@ -64,15 +87,25 @@ export class QuestsController {
     const ip = ipAddress as string || remoteAddress;
     
     // Проверяем лимит пробных квестов
-    const { canCreate, questsCreated, maxTrialQuests } = await this.questsService.checkTrialQuestsLimit(ip);
+    const { canCreate, questsCreated, maxTrialQuests, reason } = await this.questsService.checkTrialQuestsLimit(ip);
     if (!canCreate) {
-      throw new Error('Достигнут лимит пробных квестов');
+      const errorMessages = {
+        'max_total_exceeded': `Достигнут лимит пробных квестов (${questsCreated}/${maxTrialQuests})`,
+        'minute_rate_exceeded': 'Превышен лимит запросов (3 в минуту). Пожалуйста, подождите.',
+        'hour_rate_exceeded': 'Превышен лимит запросов (20 в час). Пожалуйста, подождите.'
+      };
+      
+      const errorMessage = reason ? errorMessages[reason] : 'Достигнут лимит запросов';
+      throw new Error(errorMessage);
     }
+    
+    // Регистрируем попытку создания квеста для отслеживания частоты
+    await this.questsService.recordQuestAttempt(ip);
     
     // Генерируем квест для анонимного пользователя
     const quest = await this.questsService.generateTrialQuest(generateQuestDto);
     
-    // Увеличиваем счетчик
+    // Увеличиваем счетчик общего количества квестов
     await this.questsService.incrementTrialQuestsCount(ip);
     
     return quest;
@@ -145,7 +178,28 @@ export class QuestsController {
     }
     // Используем фолбэк для локальной разработки
     const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
-    return this.questsService.checkTrialQuestsLimit(ipAddress as string || remoteAddress);
+    const ip = ipAddress as string || remoteAddress;
+    
+    // Получаем информацию о лимитах
+    const trialLimits = await this.questsService.checkTrialQuestsLimit(ip);
+    
+    // Дополнительно получаем информацию о частоте запросов
+    const minuteRateLimit = await this.questsService.checkMinuteRateLimit(ip);
+    const hourRateLimit = await this.questsService.checkHourRateLimit(ip);
+    
+    return {
+      ...trialLimits,
+      minuteRateLimit: {
+        canCreate: minuteRateLimit.canCreate,
+        requestsInLastMinute: minuteRateLimit.requestsInLastMinute,
+        maxRequestsPerMinute: 3
+      },
+      hourRateLimit: {
+        canCreate: hourRateLimit.canCreate,
+        requestsInLastHour: hourRateLimit.requestsInLastHour,
+        maxRequestsPerHour: 20
+      }
+    };
   }
   
   @Post('trial/increment')
