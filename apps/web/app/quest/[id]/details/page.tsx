@@ -2,20 +2,42 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuest } from '@/lib/hooks/useQuests';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { MainHeader } from '@/components/layout/MainHeader';
 import { MainFooter } from '@/components/layout/MainFooter';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Award, Clock, Target, Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export default function QuestDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const questId = params.id as string;
   
-  const { data: quest, isLoading, error } = useQuest(questId);
+  // Проверяем, является ли это пробным квестом
+  const isTrialQuest = questId.startsWith('trial_');
+  const [trialQuestData, setTrialQuestData] = useState<any>(null);
+  
+  // Используем хук только для обычных квестов
+  const { data: quest, isLoading, error } = useQuest(isTrialQuest ? '' : questId);
 
-  if (isLoading) {
+  useEffect(() => {
+    // Для пробных квестов загружаем данные из localStorage
+    if (isTrialQuest) {
+      const storedQuest = localStorage.getItem(`quest_${questId}`);
+      if (storedQuest) {
+        setTrialQuestData(JSON.parse(storedQuest));
+      }
+    }
+  }, [questId, isTrialQuest]);
+
+  // Определяем данные для отображения
+  const displayQuest = isTrialQuest ? trialQuestData : quest;
+  const loading = isTrialQuest ? !trialQuestData : isLoading;
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Spinner className="w-12 h-12 text-blue-600" />
@@ -23,7 +45,7 @@ export default function QuestDetailsPage() {
     );
   }
 
-  if (error || !quest) {
+  if ((error || !displayQuest) && !isTrialQuest) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -38,6 +60,24 @@ export default function QuestDetailsPage() {
     );
   }
 
+  if (isTrialQuest && !displayQuest) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+            Пробный квест не найден
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Возможно, квест был создан в другом браузере или данные были очищены.
+          </p>
+          <Button onClick={() => router.push('/')} variant="outline">
+            Создать новый квест
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F7F9FB] flex flex-col">
       <MainHeader />
@@ -45,30 +85,45 @@ export default function QuestDetailsPage() {
       <main className="flex-grow container mx-auto max-w-[1200px] px-5 py-5 md:py-10 mt-20">
         {/* Заголовок квеста */}
         <div className="bg-white rounded-lg shadow-md p-6 md:p-8 mb-6">
+          {isTrialQuest && !user && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+              <p className="text-amber-800 text-sm">
+                Это пробный квест. Чтобы сохранить его и получить доступ ко всем функциям, 
+                <Button 
+                  variant="link" 
+                  className="text-amber-800 underline p-0 h-auto ml-1"
+                  onClick={() => router.push('/auth')}
+                >
+                  зарегистрируйтесь
+                </Button>
+              </p>
+            </div>
+          )}
+          
           <h1 className="text-3xl md:text-4xl font-bold text-[#2553A1] mb-4">
-            {quest.title}
+            {displayQuest.title}
           </h1>
           <p className="text-lg text-gray-600 mb-6">
-            {quest.description}
+            {displayQuest.description}
           </p>
           
           {/* Статистика квеста */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="flex items-center space-x-2 text-gray-600">
               <Clock className="w-5 h-5" />
-              <span>{quest.estimatedTime || '30 мин'}</span>
+              <span>{displayQuest.estimatedTime || '30 мин'}</span>
             </div>
             <div className="flex items-center space-x-2 text-gray-600">
               <Award className="w-5 h-5" />
-              <span>{quest.totalXp || 100} XP</span>
+              <span>{displayQuest.totalXp || 100} XP</span>
             </div>
             <div className="flex items-center space-x-2 text-gray-600">
               <Target className="w-5 h-5" />
-              <span>{quest.tasks?.length || 0} заданий</span>
+              <span>{displayQuest.tasks?.length || 0} заданий</span>
             </div>
             <div className="flex items-center space-x-2 text-gray-600">
               <Users className="w-5 h-5" />
-              <span>{quest.participantsCount || 0} участников</span>
+              <span>{displayQuest.participantsCount || 0} участников</span>
             </div>
           </div>
           
@@ -101,13 +156,13 @@ export default function QuestDetailsPage() {
         </div>
 
         {/* Список заданий */}
-        {quest.tasks && quest.tasks.length > 0 && (
+        {displayQuest.tasks && displayQuest.tasks.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-6 md:p-8">
             <h2 className="text-2xl font-semibold text-[#2553A1] mb-6">
               Задания квеста
             </h2>
             <div className="space-y-4">
-              {quest.tasks.map((task: { id: string; title: string; description: string; xp: number; completed?: boolean }, index: number) => (
+              {displayQuest.tasks.map((task: { id: string; title: string; description: string; xp: number; completed?: boolean }, index: number) => (
                 <div 
                   key={task.id || index}
                   className="border border-gray-200 rounded-lg p-4 hover:border-[#2553A1] transition-colors"

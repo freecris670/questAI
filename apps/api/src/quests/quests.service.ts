@@ -201,6 +201,39 @@ export class QuestsService {
   }
 
   /**
+   * Генерация пробного квеста без авторизации
+   * @param params Параметры генерации квеста
+   */
+  async generateTrialQuest(params: GenerateQuestDto): Promise<IGeneratedQuestData> {
+    // Параметры для генерации квеста
+    const { theme, difficulty, length, additionalDetails } = params;
+
+    // Генерируем квест с помощью OpenAI
+    const questContent = await this.openAiService.generateQuest({
+      theme,
+      complexity: difficulty,
+      length
+    });
+
+    // Создаем временный ID для пробного квеста
+    const trialQuestId = `trial_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Преобразуем данные в формат IGeneratedQuestData
+    return {
+      id: trialQuestId,
+      title: questContent.title,
+      description: questContent.description,
+      questType: questContent.questType || 'adventure',
+      difficulty: difficulty,
+      tasks: questContent.tasks || [],
+      rewards: {
+        xp: questContent.rewards?.xp || 100,
+        itemName: questContent.rewards?.itemName || 'Награда за квест'
+      }
+    };
+  }
+
+  /**
    * Обновление квеста
    */
   async update(id: string, questData: UpdateQuestDto) {

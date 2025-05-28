@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGenerateQuest } from '@/lib/hooks/useQuests';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { Spinner } from '@/components/ui/spinner';
 
 // Советы, которые показываются во время генерации
@@ -18,6 +19,7 @@ export default function GeneratingQuestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const description = searchParams.get('description') || '';
+  const { user } = useAuth();
   
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -41,12 +43,18 @@ export default function GeneratingQuestPage() {
           difficulty = 'hard';
         }
         
-        // Генерируем квест
+        // Генерируем квест (используем пробный режим для неавторизованных)
         const questData = await generateQuest.mutateAsync({
           theme: description,
           difficulty,
-          additionalDetails: description
+          additionalDetails: description,
+          isTrial: !user // Если пользователь не авторизован, используем пробный режим
         });
+        
+        // Если это пробный квест, сохраняем его в localStorage
+        if (!user && questData && questData.id && questData.id.startsWith('trial_')) {
+          localStorage.setItem(`quest_${questData.id}`, JSON.stringify(questData));
+        }
         
         // Переходим на страницу с результатом
         if (questData && questData.id) {
@@ -62,7 +70,7 @@ export default function GeneratingQuestPage() {
     };
     
     startGeneration();
-  }, [description, generateQuest, router, isGenerating]);
+  }, [description, generateQuest, router, isGenerating, user]);
 
   // Меняем подсказки каждые 3 секунды
   useEffect(() => {

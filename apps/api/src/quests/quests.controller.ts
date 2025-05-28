@@ -49,6 +49,35 @@ export class QuestsController {
     return this.questsService.generateQuest(userId, generateQuestDto);
   }
 
+  @Post('generate/trial')
+  @ApiOperation({ summary: 'Сгенерировать пробный квест без авторизации' })
+  async generateTrial(
+    @Body() generateQuestDto: GenerateQuestDto,
+    @Req() request: Request
+  ): Promise<IGeneratedQuestData> {
+    // Получаем IP-адрес для отслеживания лимита
+    let ipAddress = request.headers['x-forwarded-for'];
+    if (Array.isArray(ipAddress)) {
+      ipAddress = ipAddress[0];
+    }
+    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
+    const ip = ipAddress as string || remoteAddress;
+    
+    // Проверяем лимит пробных квестов
+    const { canCreate, questsCreated, maxTrialQuests } = await this.questsService.checkTrialQuestsLimit(ip);
+    if (!canCreate) {
+      throw new Error('Достигнут лимит пробных квестов');
+    }
+    
+    // Генерируем квест для анонимного пользователя
+    const quest = await this.questsService.generateTrialQuest(generateQuestDto);
+    
+    // Увеличиваем счетчик
+    await this.questsService.incrementTrialQuestsCount(ip);
+    
+    return quest;
+  }
+
   @Put(':id/save')
   @ApiOperation({ summary: 'Сохранение/обновление квеста' })
   @ApiParam({ name: 'id', description: 'ID квеста' })

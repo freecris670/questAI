@@ -80,13 +80,21 @@ export function useGenerateQuest() {
       theme: string;
       difficulty: 'easy' | 'medium' | 'hard';
       additionalDetails?: string;
+      isTrial?: boolean;
     }) => {
-      const response = await fetch(getApiUrl('quests/generate'), {
+      // Используем разные эндпоинты для авторизованных и неавторизованных пользователей
+      const endpoint = params.isTrial ? 'quests/generate/trial' : 'quests/generate';
+      
+      const response = await fetch(getApiUrl(endpoint), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(params)
+        body: JSON.stringify({
+          theme: params.theme,
+          difficulty: params.difficulty,
+          additionalDetails: params.additionalDetails
+        })
       });
       
       if (!response.ok) {
