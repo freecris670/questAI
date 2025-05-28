@@ -1,6 +1,5 @@
 "use client";
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { MainHeader } from '@/components/layout/MainHeader';
 import { MainFooter } from '@/components/layout/MainFooter';
 import { TrialLimitModal } from '@/components/modals/TrialLimitModal';
-import axios from 'axios';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 // Временная иконка-заглушка. В идеале использовать библиотеку иконок, например lucide-react.
 const PlaceholderIcon = ({ className }: { className?: string }) => (
@@ -19,55 +18,53 @@ const PlaceholderIcon = ({ className }: { className?: string }) => (
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [questDescription, setQuestDescription] = useState('');
   const [questsCreated, setQuestsCreated] = useState(0);
-  const [maxTrialQuests, setMaxTrialQuests] = useState(2);
+  const maxTrialQuests = 2; // Константа для лимита пробных квестов
   const [showTrialLimitModal, setShowTrialLimitModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // API URL
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-  // При загрузке страницы получаем информацию о лимите пробных квестов с сервера
+  // При загрузке страницы проверяем, сколько квестов создано без авторизации
   useEffect(() => {
-    const checkTrialLimit = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/quests/trial/check-limit`);
-        const { canCreate, questsCreated, maxTrialQuests } = response.data;
-        
-        setQuestsCreated(questsCreated);
-        setMaxTrialQuests(maxTrialQuests);
+    const checkTrialLimit = () => {
+      // Получаем количество созданных квестов из localStorage для неавторизованных пользователей
+      if (!user) {
+        const storedCount = localStorage.getItem('trial_quests_count');
+        const count = storedCount ? parseInt(storedCount, 10) : 0;
+        setQuestsCreated(count);
         
         // Если пользователь уже достиг лимита, показываем модальное окно
-        if (!canCreate) {
+        if (count >= maxTrialQuests) {
           setShowTrialLimitModal(true);
         }
-      } catch (error) {
-        console.error('Ошибка при проверке лимита пробных квестов:', error);
       }
     };
     
     checkTrialLimit();
-  }, [API_URL]);
+  }, [user, maxTrialQuests]);
 
   const handleCreateQuest = async () => {
     if (isLoading) return;
     setIsLoading(true);
     
     try {
-      // Сначала проверяем лимит пробных квестов
-      const response = await axios.get(`${API_URL}/quests/trial/check-limit`);
-      const { canCreate, questsCreated } = response.data;
-      
-      // Если пользователь достиг лимита квестов в пробной версии
-      if (!canCreate) {
-        setShowTrialLimitModal(true);
-        setIsLoading(false);
-        return;
+      // Если пользователь не авторизован, проверяем лимит пробных квестов
+      if (!user) {
+        const currentCount = questsCreated;
+        
+        // Если пользователь достиг лимита квестов в пробной версии
+        if (currentCount >= maxTrialQuests) {
+          setShowTrialLimitModal(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Увеличиваем счетчик в localStorage
+        const newCount = currentCount + 1;
+        localStorage.setItem('trial_quests_count', newCount.toString());
+        setQuestsCreated(newCount);
       }
-      
-      // Увеличиваем счетчик на сервере
-      await axios.post(`${API_URL}/quests/trial/increment`);
       
       // Переходим на страницу генерации квеста
       router.push('/quest/generating?description=' + encodeURIComponent(questDescription));
@@ -76,6 +73,7 @@ export default function HomePage() {
       setIsLoading(false);
     }
   };
+
   return (
     <div className="bg-[#F7F9FB] min-h-screen text-gray-800 flex flex-col">
       <MainHeader />
@@ -104,10 +102,15 @@ export default function HomePage() {
             <Button 
               onClick={handleCreateQuest}
               className="w-full h-[48px] bg-[#22B07D] hover:bg-[#22B07D]/90 text-white font-medium text-base rounded-md mt-6"
-              disabled={isLoading}
+              disabled={isLoading || !questDescription.trim()}
             >
               {isLoading ? 'Создание...' : 'Создать квест'}
             </Button>
+            {!user && (
+              <p className="text-sm text-[#64748B] mt-3 text-center">
+                Вы создали {questsCreated} из {maxTrialQuests} бесплатных квестов
+              </p>
+            )}
           </div>
         </section>
 

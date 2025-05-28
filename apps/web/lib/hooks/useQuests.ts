@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { getApiUrl } from '@/lib/config';
 
 /**
  * Хук для получения списка квестов
@@ -13,7 +14,7 @@ export function useQuests(userId?: string) {
         params.append('userId', userId);
       }
       
-      const response = await fetch(`/api/quests?${params.toString()}`);
+      const response = await fetch(getApiUrl(`quests?${params.toString()}`));
       if (!response.ok) {
         throw new Error('Ошибка при получении квестов');
       }
@@ -31,7 +32,7 @@ export function useQuest(id: string) {
   return useQuery({
     queryKey: ['quest', id],
     queryFn: async () => {
-      const response = await fetch(`/api/quests/${id}`);
+      const response = await fetch(getApiUrl(`quests/${id}`));
       if (!response.ok) {
         throw new Error('Ошибка при получении квеста');
       }
@@ -53,7 +54,7 @@ export function useCreateQuest() {
       content: Record<string, unknown>;
       is_public?: boolean;
     }) => {
-      const response = await fetch('/api/quests', {
+      const response = await fetch(getApiUrl('quests'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -80,7 +81,7 @@ export function useGenerateQuest() {
       difficulty: 'easy' | 'medium' | 'hard';
       additionalDetails?: string;
     }) => {
-      const response = await fetch('/api/quests/generate', {
+      const response = await fetch(getApiUrl('quests/generate'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -108,7 +109,7 @@ export function useUpdateTaskProgress(questId: string) {
       completed: boolean;
       progress?: number;
     }) => {
-      const response = await fetch(`/api/quests/${questId}/progress`, {
+      const response = await fetch(getApiUrl(`quests/${questId}/progress`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'

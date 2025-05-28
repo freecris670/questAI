@@ -1,102 +1,129 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Brain } from 'lucide-react';
-import { MainHeader } from '@/components/layout/MainHeader';
-import { MainFooter } from '@/components/layout/MainFooter';
-import { loadSampleQuestData } from '@/lib/services/questData';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useGenerateQuest } from '@/lib/hooks/useQuests';
+import { Spinner } from '@/components/ui/spinner';
 
-const GeneratingQuestPage = () => {
+// Советы, которые показываются во время генерации
+const generationHints = [
+  "Анализируем ваш запрос и создаем уникальный сценарий...",
+  "Разрабатываем интересные задания и испытания...",
+  "Добавляем элементы геймификации и награды...",
+  "Настраиваем сложность и баланс квеста...",
+  "Финальная проверка и оптимизация..."
+];
+
+export default function GeneratingQuestPage() {
   const router = useRouter();
-  const hints = [
-    "Анализируем вашу задачу...",
-    "Генерируем увлекательный сюжет...",
-    "Добавляем элементы геймификации...",
-    "Настраиваем сложность и награды...",
-  ];
+  const searchParams = useSearchParams();
+  const description = searchParams.get('description') || '';
+  
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  const generateQuest = useGenerateQuest();
 
   useEffect(() => {
-    const hintInterval = setInterval(() => {
-      setCurrentHintIndex((prevIndex) => (prevIndex + 1) % hints.length);
+    // Запускаем генерацию квеста при загрузке страницы
+    const startGeneration = async () => {
+      if (!description || isGenerating) return;
+      
+      setIsGenerating(true);
+      
+      try {
+        // Определяем сложность на основе описания (простая логика)
+        let difficulty: 'easy' | 'medium' | 'hard' = 'medium';
+        const lowerDesc = description.toLowerCase();
+        if (lowerDesc.includes('легк') || lowerDesc.includes('прост') || lowerDesc.includes('начина')) {
+          difficulty = 'easy';
+        } else if (lowerDesc.includes('сложн') || lowerDesc.includes('труд') || lowerDesc.includes('эксперт')) {
+          difficulty = 'hard';
+        }
+        
+        // Генерируем квест
+        const questData = await generateQuest.mutateAsync({
+          theme: description,
+          difficulty,
+          additionalDetails: description
+        });
+        
+        // Переходим на страницу с результатом
+        if (questData && questData.id) {
+          router.push(`/quest/${questData.id}/details`);
+        } else {
+          throw new Error('Не удалось получить ID квеста');
+        }
+      } catch (error) {
+        console.error('Ошибка при генерации квеста:', error);
+        // Возвращаем на главную с сообщением об ошибке
+        router.push('/?error=generation_failed');
+      }
+    };
+    
+    startGeneration();
+  }, [description, generateQuest, router, isGenerating]);
+
+  // Меняем подсказки каждые 3 секунды
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentHintIndex((prevIndex) => 
+        prevIndex < generationHints.length - 1 ? prevIndex + 1 : prevIndex
+      );
     }, 3000);
 
-    const totalDuration = 3000; // ms (3 seconds for auto-redirect example)
-    const updateInterval = 100; // ms
-    const progressIncrement = (100 / (totalDuration / updateInterval));
+    return () => clearInterval(interval);
+  }, []);
 
-    const progressTimer = setInterval(() => {
-      setProgress((prevProgress) => {
-        if (prevProgress >= 100) {
-          clearInterval(progressTimer);
-          
-          // Получаем данные из JSON-файла
-          const questData = loadSampleQuestData();
-          // Генерируем уникальный ID для квеста
-          const randomId = `quest-${Math.random().toString(36).substring(2, 10)}`;
-          
-          // Перенаправление на страницу с детальным описанием квеста
-          router.push(`/quest/${randomId}`);
-          return 100;
-        }
-        return prevProgress + progressIncrement;
-      });
-    }, updateInterval);
-
-    return () => {
-      clearInterval(hintInterval);
-      clearInterval(progressTimer);
-    };
-  }, [hints.length, router]);
+  if (!description) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Описание квеста не указано</h2>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Вернуться на главную
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-quest-bg-light flex flex-col">
-      <MainHeader />
-      {/* Main content area with padding for fixed header and flex-grow to push footer down */}
-      <div className="flex-grow flex flex-col items-center justify-center p-4 text-center pt-20">
-        <div className="relative w-[120px] h-[120px] mb-8">
-          <div 
-            className="absolute inset-0 rounded-full animate-spin-slow border-[6px] border-transparent border-t-quest-blue border-r-quest-emerald"
-            style={{ animationDuration: '2s' }}
-          />
-          <div 
-            className="absolute inset-0 rounded-full animate-spin-slow-reverse border-[6px] border-transparent border-l-quest-blue border-b-quest-emerald"
-            style={{ animationDuration: '2s', animationDelay: '-1s' }}
-          />
-          <div className="w-full h-full flex items-center justify-center">
-            <Brain size={48} className="text-quest-blue" />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto p-8">
+        <div className="text-center">
+          <div className="mb-8">
+            <Spinner className="w-16 h-16 mx-auto text-blue-600" />
+          </div>
+          
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+            Создаем ваш квест
+          </h1>
+          
+          <p className="text-lg text-gray-600 mb-8">
+            {generationHints[currentHintIndex]}
+          </p>
+          
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-sm font-medium text-gray-500 mb-2">Ваше описание:</h3>
+            <p className="text-gray-700 italic">"{description}"</p>
+          </div>
+          
+          <div className="flex justify-center space-x-2">
+            {generationHints.map((_, index) => (
+              <div
+                key={index}
+                className={`h-2 w-2 rounded-full transition-colors duration-300 ${
+                  index <= currentHintIndex ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              />
+            ))}
           </div>
         </div>
-
-        <div className="w-[300px] h-[6px] bg-quest-gray-border rounded-full overflow-hidden mb-6">
-          <div
-            className="h-full bg-gradient-to-r from-quest-blue to-quest-emerald rounded-full transition-all duration-100 ease-linear"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-
-        <h1 className="text-2xl font-medium text-quest-blue mb-3 text-center">
-          Создаем ваш квест...
-        </h1>
-        <p className="text-base text-[#64748B] min-h-[24px] text-center">
-          {hints[currentHintIndex]}
-        </p>
-
-        <button 
-          onClick={() => {
-            console.log('Cancel generation');
-            router.push('/'); // Navigate to main page
-          }}
-          className="mt-12 text-quest-cancel-red hover:underline text-sm"
-        >
-          Отменить
-        </button>
       </div>
-      <MainFooter />
     </div>
   );
-};
-
-export default GeneratingQuestPage;
+}

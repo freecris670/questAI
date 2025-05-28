@@ -25,7 +25,7 @@ export default function ResetPasswordPage() {
   const token = searchParams.get('token');
   
   // Запрос на восстановление пароля (отправка письма)
-  const handleResetRequest = async (e: React.FormEvent) => {
+  const handleResetRequest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -45,15 +45,16 @@ export default function ResetPasswordPage() {
       if (error) throw error;
 
       setSuccess('Инструкции по сбросу пароля отправлены на ваш email');
-    } catch (error: any) {
-      setError(error.message || 'Произошла ошибка при отправке запроса');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при отправке запроса';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Установка нового пароля
-  const handlePasswordReset = async (e: React.FormEvent) => {
+  const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -84,8 +85,9 @@ export default function ResetPasswordPage() {
       setTimeout(() => {
         router.push('/auth');
       }, 3000);
-    } catch (error: any) {
-      setError(error.message || 'Произошла ошибка при изменении пароля');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при изменении пароля';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

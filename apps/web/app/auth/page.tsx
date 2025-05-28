@@ -19,15 +19,14 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleEmailSignUp = async (e: React.FormEvent) => {
+  const handleEmailSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -35,58 +34,48 @@ export default function AuthPage() {
         }
       });
 
-      if (error) throw error;
-
       // После успешной регистрации направляем на опрос предпочтений
-      if (data.user) {
-        router.push('/auth/preferences');
-      } else {
-        setSuccessMessage('Проверьте свою почту для подтверждения регистрации.');
-      }
-    } catch (error: any) {
-      setError(error.message || 'Произошла ошибка при регистрации.');
+      router.push('/auth/preferences');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при регистрации.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleEmailSignIn = async (e: React.FormEvent) => {
+  const handleEmailSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
-
       // После успешного входа перенаправляем на страницу квестов
       router.push('/my-quests');
-    } catch (error: any) {
-      setError(error.message || 'Неверный логин или пароль.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Неверный логин или пароль.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    setError(null);
-    
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-
-      if (error) throw error;
-      // Редирект произойдет автоматически
-    } catch (error: any) {
-      setError(error.message || 'Произошла ошибка при входе через Google.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при входе через Google.';
+      setError(errorMessage);
     }
   };
 
@@ -187,12 +176,6 @@ export default function AuthPage() {
           {error && (
             <Alert variant="destructive" className="mt-4">
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {successMessage && (
-            <Alert className="mt-4 bg-green-50 border-green-200">
-              <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
             </Alert>
           )}
 

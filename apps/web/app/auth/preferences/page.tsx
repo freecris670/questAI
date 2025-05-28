@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MainHeader } from '@/components/layout/MainHeader';
@@ -20,7 +19,7 @@ interface UserPreferences {
 
 export default function PreferencesPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [preferences, setPreferences] = useState<UserPreferences>({
     questStyle: '',
@@ -111,14 +110,6 @@ export default function PreferencesPage() {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FB]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2553A1]"></div>
-      </div>
-    );
-  }
 
   const renderStepContent = () => {
     switch (preferences.step) {
@@ -254,6 +245,14 @@ export default function PreferencesPage() {
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FB]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2553A1]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F9FB] flex flex-col">

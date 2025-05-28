@@ -55,12 +55,6 @@ export function QuestTasks({ tasks, activeTaskId, questId }: QuestTasksProps) {
     }
   };
 
-  // Проверка наличия подзадач (в данной моковой версии считаем, что подзадач нет)
-  const hasSubtasks = (taskId: string) => {
-    // В будущем здесь будет реальная проверка подзадач
-    return false;
-  };
-  
   return (
     <Card className="mb-6 bg-gray-50 dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
@@ -69,7 +63,6 @@ export function QuestTasks({ tasks, activeTaskId, questId }: QuestTasksProps) {
       <CardContent className="pt-2">
         <div className="space-y-4">
           {localTasks.map((task, index) => {
-            const hasTaskSubtasks = hasSubtasks(task.id);
             const fillProgress = !task.completed && task.progress > 0;
             
             return (
@@ -77,31 +70,15 @@ export function QuestTasks({ tasks, activeTaskId, questId }: QuestTasksProps) {
                 key={task.id}
                 className={`flex items-start p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors ${task.id === activeTaskId && !task.completed ? 'border-l-4 border-blue-500 dark:border-blue-400' : ''}`}
               >
-                {hasTaskSubtasks ? (
-                  // Круглый индикатор для задач с подзадачами
-                  <div 
-                    className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mr-3 mt-0.5
-                      ${task.completed ? 'bg-green-100 dark:bg-green-900/70' : 
-                        fillProgress ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
-                  >
-                    {task.completed ? (
-                      <CheckIcon size={14} className="text-green-600 dark:text-green-400" />
-                    ) : (
-                      <span className="text-xs text-white dark:text-white">{index + 1}</span>
-                    )}
-                  </div>
-                ) : (
-                  // Чекбокс для задач без подзадач
-                  <div className="flex-shrink-0 mr-3 mt-0.5">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={() => handleCheckboxChange(task.id)}
-                      className="h-5 w-5 rounded-sm border-2 border-gray-300 dark:border-gray-600 
-                        text-blue-600 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
-                    />
-                  </div>
-                )}
+                <div className="flex-shrink-0 mr-3 mt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={task.completed}
+                    onChange={() => handleCheckboxChange(task.id)}
+                    className="h-5 w-5 rounded-sm border-2 border-gray-300 dark:border-gray-600 
+                      text-blue-600 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                  />
+                </div>
                 <div>
                   <h4 className={`text-sm font-medium ${task.completed ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
                     {task.title}

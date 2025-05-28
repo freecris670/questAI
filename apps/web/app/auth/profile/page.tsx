@@ -31,7 +31,7 @@ const characterNames = [
 
 export default function ProfileSetupPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [characterName, setCharacterName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -120,9 +120,10 @@ export default function ProfileSetupPage() {
       
       // Переход к квестам после завершения создания профиля
       router.push('/my-quests');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Ошибка сохранения профиля:', error);
-      setError(error.message || 'Произошла ошибка при сохранении профиля');
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при сохранении профиля';
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }

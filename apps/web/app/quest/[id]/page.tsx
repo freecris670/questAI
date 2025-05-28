@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
+// Импорт типов и сервиса квестов
+import { QuestDetails } from '../types';
+import { getSampleQuestById } from '@/lib/services/questData';
+
 // Импорт компонентов
 import { QuestHeader } from '../components/QuestHeader';
 import { QuestRewardsSection } from '../components/QuestRewards';
@@ -13,21 +17,10 @@ import { QuestTasks } from '../components/QuestTasks';
 import { QuestAchievements } from '../components/QuestAchievements';
 import { QuestStatsSidebar } from '../components/QuestStats';
 
-// Импорт типов и сервиса квестов
-import { QuestDetails } from '../types';
-import { getQuestById } from '@/lib/services/quests';
-import { getSampleQuestById } from '@/lib/services/questData';
-
-interface PageProps {
-  params: {
-    id: string; 
-  }
-}
-
 /**
  * Детальная страница квеста, содержащая информацию о квесте, задачах, наградах и достижениях
  */
-export default function DetailedQuestPage() {
+export default function QuestPage() {
   // В Next.js 15+ используем useParams для получения параметров маршрута
   const params = useParams();
   const id = params.id as string;
@@ -131,7 +124,7 @@ export default function DetailedQuestPage() {
             <QuestRewardsSection rewards={rewards} />
             
             {/* Задачи */}
-            <QuestTasks tasks={subtasks} activeTaskId={activeTaskId} />
+            <QuestTasks questId={id} tasks={subtasks} activeTaskId={activeTaskId} />
             
             {/* Достижения */}
             <QuestAchievements achievements={achievements} />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { MainHeader } from '@/components/layout/MainHeader';
 import { MainFooter } from '@/components/layout/MainFooter';
 import { Button } from '@/components/ui/button';
@@ -14,20 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
-// Перечисление для разделов настроек
-enum SettingsTab {
-  PROFILE = "profile",
-  PREFERENCES = "preferences",
-  INTEGRATIONS = "integrations",
-  NOTIFICATIONS = "notifications"
-}
-
 /**
  * Страница настроек пользователя - реализация этапа 5.1 из UserFlow
  */
 export default function SettingsPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<SettingsTab>(SettingsTab.PROFILE);
+  const [activeTab, setActiveTab] = useState<string>("profile");
   
   // Моковые данные для примера
   const [userData, setUserData] = useState({
@@ -101,19 +91,19 @@ export default function SettingsPage() {
             <p className="text-gray-600 dark:text-gray-400 mt-1">Управление персональными настройками и предпочтениями</p>
           </div>
           
-          <Tabs defaultValue={activeTab} className="w-full" onValueChange={(value) => setActiveTab(value as SettingsTab)}>
+          <Tabs defaultValue={activeTab} className="w-full" onValueChange={(value) => setActiveTab(value as string)}>
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <TabsList className="grid grid-cols-4 gap-4">
-                <TabsTrigger value={SettingsTab.PROFILE}>Профиль</TabsTrigger>
-                <TabsTrigger value={SettingsTab.PREFERENCES}>Предпочтения</TabsTrigger>
-                <TabsTrigger value={SettingsTab.INTEGRATIONS}>Интеграции</TabsTrigger>
-                <TabsTrigger value={SettingsTab.NOTIFICATIONS}>Уведомления</TabsTrigger>
+                <TabsTrigger value="profile">Профиль</TabsTrigger>
+                <TabsTrigger value="preferences">Предпочтения</TabsTrigger>
+                <TabsTrigger value="integrations">Интеграции</TabsTrigger>
+                <TabsTrigger value="notifications">Уведомления</TabsTrigger>
               </TabsList>
             </div>
             
             <div className="p-6">
               {/* Вкладка Профиль */}
-              <TabsContent value={SettingsTab.PROFILE} className="space-y-6">
+              <TabsContent value="profile" className="space-y-6">
                 <div className="flex flex-col items-center md:flex-row md:items-start gap-6">
                   <div className="w-32 h-32 relative">
                     <div className="w-full h-full rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
@@ -163,7 +153,7 @@ export default function SettingsPage() {
               </TabsContent>
               
               {/* Вкладка Предпочтения */}
-              <TabsContent value={SettingsTab.PREFERENCES} className="space-y-6">
+              <TabsContent value="preferences" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="questStyle">Стиль квестов</Label>
@@ -239,7 +229,7 @@ export default function SettingsPage() {
               </TabsContent>
               
               {/* Вкладка Интеграции */}
-              <TabsContent value={SettingsTab.INTEGRATIONS} className="space-y-6">
+              <TabsContent value="integrations" className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between py-2">
                     <div className="space-y-0.5">
@@ -277,7 +267,7 @@ export default function SettingsPage() {
               </TabsContent>
               
               {/* Вкладка Уведомления */}
-              <TabsContent value={SettingsTab.NOTIFICATIONS} className="space-y-6">
+              <TabsContent value="notifications" className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between py-2">
                     <div className="space-y-0.5">

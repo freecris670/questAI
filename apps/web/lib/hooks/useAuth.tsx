@@ -1,14 +1,14 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 interface UserProfile {
   id: string;
   avatar_url: string | null;
   character_name: string | null;
   completed_onboarding: boolean;
-  preferences: Record<string, any> | null;
+  preferences: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +29,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);

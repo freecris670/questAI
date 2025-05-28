@@ -30,9 +30,9 @@ export default function AchievementsPage() {
   const [activeTab, setActiveTab] = useState('all');
   
   // Моковые данные для примера
-  const [userLevel, setUserLevel] = useState(5);
-  const [userXp, setUserXp] = useState(780);
-  const [nextLevelXp, setNextLevelXp] = useState(1000);
+  const [userLevel] = useState(12);
+  const [userXp] = useState(1250);
+  const [nextLevelXp] = useState(1500);
   
   // Моковые данные достижений
   const achievements: IAchievement[] = [
