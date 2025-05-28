@@ -8,9 +8,11 @@ import { Trophy, Sparkles, Gift, Crown, Star, Zap, Shield, Gem } from 'lucide-re
 interface TrialLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
+  questsCreated?: number; // Количество созданных квестов
+  maxTrialQuests?: number; // Максимальное количество квестов в пробном режиме
 }
 
-export function TrialLimitModal({ isOpen, onClose }: TrialLimitModalProps) {
+export function TrialLimitModal({ isOpen, onClose, questsCreated = 2, maxTrialQuests = 2 }: TrialLimitModalProps) {
   const router = useRouter();
 
   const handleRegister = () => {
@@ -35,7 +37,7 @@ export function TrialLimitModal({ isOpen, onClose }: TrialLimitModalProps) {
           </div>
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center text-white">
-              Поздравляем! Вы создали 2 квеста!
+              Поздравляем! Вы создали {questsCreated || 2} {questsCreated === 1 ? 'квест' : 'квеста'}!
             </DialogTitle>
             <DialogDescription className="text-center text-white/90 mt-2">
               Вы отлично освоились с QuestAI! Готовы раскрыть весь потенциал платформы?

@@ -25,45 +25,78 @@ export default function HomePage() {
   const [showTrialLimitModal, setShowTrialLimitModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // При загрузке страницы проверяем, сколько квестов создано без авторизации
+  // При загрузке страницы проверяем, сколько квестов создано без авторизации через API
   useEffect(() => {
-    const checkTrialLimit = () => {
-      // Получаем количество созданных квестов из localStorage для неавторизованных пользователей
+    const checkTrialLimit = async () => {
+      // Запрашиваем данные о лимите квестов с сервера
       if (!user) {
-        const storedCount = localStorage.getItem('trial_quests_count');
-        const count = storedCount ? parseInt(storedCount, 10) : 0;
-        setQuestsCreated(count);
-        
-        // Если пользователь уже достиг лимита, показываем модальное окно
-        if (count >= maxTrialQuests) {
-          setShowTrialLimitModal(true);
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/quests/trial/check-limit`, {
+            method: 'GET',
+            credentials: 'include',
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setQuestsCreated(data.questsCreated);
+            
+            // Сохраняем в localStorage для синхронизации с сервером
+            localStorage.setItem('trial_quests_count', data.questsCreated.toString());
+            
+            // Если пользователь уже достиг лимита, показываем модальное окно
+            if (data.questsCreated >= data.maxTrialQuests) {
+              setShowTrialLimitModal(true);
+            }
+          } else {
+            console.error('Ошибка при проверке лимита:', await response.text());
+          }
+        } catch (error) {
+          console.error('Ошибка при проверке лимита:', error);
+          // При ошибке используем локальные данные в качестве запасного варианта
+          const storedCount = localStorage.getItem('trial_quests_count');
+          const count = storedCount ? parseInt(storedCount, 10) : 0;
+          setQuestsCreated(count);
         }
       }
     };
     
     checkTrialLimit();
-  }, [user, maxTrialQuests]);
+  }, [user]);
 
   const handleCreateQuest = async () => {
     if (isLoading) return;
     setIsLoading(true);
     
     try {
-      // Если пользователь не авторизован, проверяем лимит пробных квестов
+      // Если пользователь не авторизован, проверяем лимит пробных квестов через API
       if (!user) {
-        const currentCount = questsCreated;
-        
-        // Если пользователь достиг лимита квестов в пробной версии
-        if (currentCount >= maxTrialQuests) {
-          setShowTrialLimitModal(true);
+        // Проверяем лимит через API
+        try {
+          const checkResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/quests/trial/check-limit`, {
+            method: 'GET',
+            credentials: 'include',
+          });
+          
+          if (!checkResponse.ok) {
+            throw new Error('Не удалось проверить лимит пробных квестов');
+          }
+          
+          const limitData = await checkResponse.json();
+          
+          // Если пользователь достиг лимита квестов в пробной версии
+          if (!limitData.canCreate || limitData.questsCreated >= limitData.maxTrialQuests) {
+            setShowTrialLimitModal(true);
+            setIsLoading(false);
+            return;
+          }
+          
+          // Устанавливаем актуальное количество созданных квестов
+          setQuestsCreated(limitData.questsCreated);
+        } catch (error) {
+          console.error('Ошибка при проверке лимита пробных квестов:', error);
           setIsLoading(false);
           return;
         }
-        
-        // Увеличиваем счетчик в localStorage
-        const newCount = currentCount + 1;
-        localStorage.setItem('trial_quests_count', newCount.toString());
-        setQuestsCreated(newCount);
       }
       
       // Переходим на страницу генерации квеста

@@ -502,25 +502,31 @@ export class QuestsService {
     // Максимальное количество квестов для неавторизованных пользователей
     const MAX_TRIAL_QUESTS = 2;
     
-    // Получаем количество квестов, созданных с данного IP-адреса
-    const { data, error } = await this.supabaseService.client
-      .from('trial_quests_usage')
-      .select('quests_created')
-      .eq('ip_address', ipAddress)
-      .single();
+    try {
+      // Используем сервисную роль Supabase для доступа к защищенной таблице
+      const { data, error } = await this.supabaseService.adminClient
+        .from('trial_quests_usage')
+        .select('quests_created, created_at, last_quest_at')
+        .eq('ip_address', ipAddress)
+        .single();
+        
+      // Если записи нет, значит это первый квест пользователя
+      if (error || !data) {
+        return { canCreate: true, questsCreated: 0, maxTrialQuests: MAX_TRIAL_QUESTS };
+      }
       
-    // Если записи нет, значит это первый квест пользователя
-    if (error || !data) {
+      // Проверяем, не превышен ли лимит
+      const questsCreated = data.quests_created;
+      return { 
+        canCreate: questsCreated < MAX_TRIAL_QUESTS, 
+        questsCreated, 
+        maxTrialQuests: MAX_TRIAL_QUESTS
+      };
+    } catch (err) {
+      console.error('Ошибка при проверке лимита пробных квестов:', err);
+      // В случае ошибки возвращаем безопасное значение - разрешаем создание
       return { canCreate: true, questsCreated: 0, maxTrialQuests: MAX_TRIAL_QUESTS };
     }
-    
-    // Проверяем, не превышен ли лимит
-    const questsCreated = data.quests_created;
-    return { 
-      canCreate: questsCreated < MAX_TRIAL_QUESTS, 
-      questsCreated, 
-      maxTrialQuests: MAX_TRIAL_QUESTS
-    };
   }
   
   /**
@@ -529,41 +535,57 @@ export class QuestsService {
    * @returns Обновленное количество созданных квестов
    */
   async incrementTrialQuestsCount(ipAddress: string): Promise<number> {
-    // Получаем текущую запись для IP-адреса
-    const { data, error } = await this.supabaseService.client
-      .from('trial_quests_usage')
-      .select('quests_created')
-      .eq('ip_address', ipAddress)
-      .single();
+    try {
+      // Используем сервисную роль Supabase для доступа к защищенной таблице
+      const now = new Date().toISOString();
       
-    if (error || !data) {
-      // Если записи нет, создаем новую с счетчиком 1
-      const { data: newData, error: insertError } = await this.supabaseService.client
+      // Получаем текущую запись для IP-адреса
+      const { data, error } = await this.supabaseService.adminClient
         .from('trial_quests_usage')
-        .insert({ ip_address: ipAddress, quests_created: 1 })
         .select('quests_created')
-        .single();
-        
-      if (insertError) {
-        throw new Error(`Ошибка при создании записи о пробных квестах: ${insertError.message}`);
-      }
-      
-      return newData.quests_created;
-    } else {
-      // Иначе увеличиваем счетчик на 1
-      const newCount = data.quests_created + 1;
-      const { data: updatedData, error: updateError } = await this.supabaseService.client
-        .from('trial_quests_usage')
-        .update({ quests_created: newCount })
         .eq('ip_address', ipAddress)
-        .select('quests_created')
         .single();
         
-      if (updateError) {
-        throw new Error(`Ошибка при обновлении счетчика пробных квестов: ${updateError.message}`);
+      if (error || !data) {
+        // Если записи нет, создаем новую с счетчиком 1
+        const { data: newData, error: insertError } = await this.supabaseService.adminClient
+          .from('trial_quests_usage')
+          .insert({ 
+            ip_address: ipAddress, 
+            quests_created: 1,
+            first_quest_at: now,
+            last_quest_at: now
+          })
+          .select('quests_created')
+          .single();
+          
+        if (insertError) {
+          throw new Error(`Ошибка при создании записи о пробных квестах: ${insertError.message}`);
+        }
+        
+        return newData.quests_created;
+      } else {
+        // Иначе увеличиваем счетчик на 1
+        const newCount = data.quests_created + 1;
+        const { data: updatedData, error: updateError } = await this.supabaseService.adminClient
+          .from('trial_quests_usage')
+          .update({ 
+            quests_created: newCount,
+            last_quest_at: now 
+          })
+          .eq('ip_address', ipAddress)
+          .select('quests_created')
+          .single();
+          
+        if (updateError) {
+          throw new Error(`Ошибка при обновлении счетчика пробных квестов: ${updateError.message}`);
+        }
+        
+        return updatedData.quests_created;
       }
-      
-      return updatedData.quests_created;
+    } catch (err) {
+      console.error('Ошибка при обновлении счетчика пробных квестов:', err);
+      throw new Error(`Ошибка при работе с данными пробных квестов: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

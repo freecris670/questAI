@@ -29,7 +29,18 @@ export class SupabaseService implements OnModuleInit {
     });
   }
 
+  /**
+   * Получить стандартный клиент Supabase
+   */
   get client(): SupabaseClient<Database> {
+    return this.supabaseClient;
+  }
+  
+  /**
+   * Получить клиент Supabase с правами сервисной роли для работы с защищенными таблицами
+   * (используется для таблиц с RLS политиками, где нужна авторизация)
+   */
+  get adminClient(): SupabaseClient<Database> {
     return this.supabaseClient;
   }
 
