@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, UseGuards, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { QuestsService } from './quests.service';
 import { CreateQuestDto, GenerateQuestDto, UpdateQuestDto, UpdateQuestProgressDto, PublishQuestDto } from './dto';
 import { IQuest, IQuestDetails, IGeneratedQuestData, IQuestProgress } from '../interfaces/quest.interfaces';
@@ -41,6 +42,7 @@ export class QuestsController {
   @Post('generate')
   @ApiOperation({ summary: 'Сгенерировать новый квест с помощью AI' })
   @ApiBearerAuth()
+  @Throttle({ short: { ttl: 60000, limit: 3 }, medium: { ttl: 3600000, limit: 20 } }) // 3 запроса в минуту, 20 в час
   @UseGuards(SupabaseAuthGuard)
   async generate(
     @User('id') userId: string,
@@ -74,6 +76,7 @@ export class QuestsController {
 
   @Post('generate/trial')
   @ApiOperation({ summary: 'Сгенерировать пробный квест без авторизации' })
+  @Throttle({ short: { ttl: 60000, limit: 3 }, medium: { ttl: 3600000, limit: 20 } }) // 3 запроса в минуту, 20 в час
   async generateTrial(
     @Body() generateQuestDto: GenerateQuestDto,
     @Req() request: Request

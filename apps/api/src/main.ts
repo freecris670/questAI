@@ -1,10 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Используем явное приведение типа для Express
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  
+  // Настройка доверия к прокси для корректного определения IP для rate limiting
+  app.set('trust proxy', true);
   
   // Устанавливаем глобальный префикс для всех роутов
   app.setGlobalPrefix('api');
@@ -34,9 +40,26 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
   
+  // Настройка информационного логирования о превышении лимитов запросов
+  app.useLogger({
+    log: (message: any) => console.log(message),
+    error: (message: any) => console.error(message),
+    warn: (message: any) => {
+      // Отслеживаем превышение лимитов
+      if (typeof message === 'string' && message.includes('ThrottlerException')) {
+        console.warn(`[Rate Limit] ${message}`);
+      } else {
+        console.warn(message);
+      }
+    },
+    debug: (message: any) => console.debug(message),
+    verbose: (message: any) => console.log(message),
+  });
+
   // Запускаем приложение
   const port = process.env.PORT || 3001;
   await app.listen(port);
   console.log(`Приложение запущено на порту: ${port}`);
+  console.log(`Настроено ограничение запросов: 3 в минуту, 20 в час`);
 }
 bootstrap();

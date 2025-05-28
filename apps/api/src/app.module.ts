@@ -6,6 +6,7 @@ import { QuestsModule } from './quests/quests.module';
 import { UsersModule } from './users/users.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { OpenAiModule } from './openai/openai.module';
+import { ThrottlerConfigModule } from './throttler/throttler.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { OpenAiModule } from './openai/openai.module';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
+    ThrottlerConfigModule, // Добавляем модуль ограничения запросов
     SupabaseModule,
     QuestsModule,
     UsersModule,
