@@ -4,15 +4,18 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGenerateQuest } from '@/lib/hooks/useQuests';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { Spinner } from '@/components/ui/spinner';
+import { AnimatedRings } from '@/components/ui/animated-rings';
+import { Progress } from '@/components/ui/progress';
 
-// Советы, которые показываются во время генерации
+// Улучшенные подсказки в стиле MMORPG
 const generationHints = [
-  "Анализируем ваш запрос и создаем уникальный сценарий...",
-  "Разрабатываем интересные задания и испытания...",
-  "Добавляем элементы геймификации и награды...",
-  "Настраиваем сложность и баланс квеста...",
-  "Финальная проверка и оптимизация..."
+  "Анализируем магическую сущность вашего запроса...",
+  "Кузнец квестов выковывает уникальные испытания...",
+  "Картограф рисует путь вашего приключения...",
+  "Добавляем редкие награды и артефакты...",
+  "Балансируем сложность для идеального вызова...",
+  "Наполняем квест эпической энергией...",
+  "Финальная проверка свитка приключений..."
 ];
 
 export default function GeneratingQuestPage() {
@@ -22,6 +25,7 @@ export default function GeneratingQuestPage() {
   const { user } = useAuth();
   
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   
   const generateQuest = useGenerateQuest();
@@ -72,25 +76,37 @@ export default function GeneratingQuestPage() {
     startGeneration();
   }, [description, generateQuest, router, isGenerating, user]);
 
-  // Меняем подсказки каждые 3 секунды
+  // Анимация прогресс-бара
+  useEffect(() => {
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 95) return prev;
+        return prev + Math.random() * 15;
+      });
+    }, 500);
+
+    return () => clearInterval(progressInterval);
+  }, []);
+
+  // Меняем подсказки каждые 2.5 секунды
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentHintIndex((prevIndex) => 
         prevIndex < generationHints.length - 1 ? prevIndex + 1 : prevIndex
       );
-    }, 3000);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, []);
 
   if (!description) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">Описание квеста не указано</h2>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="px-6 py-3 bg-[#2553A1] text-white rounded-lg hover:bg-[#2553A1]/90 transition"
           >
             Вернуться на главную
           </button>
@@ -100,36 +116,63 @@ export default function GeneratingQuestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-      <div className="max-w-md w-full mx-auto p-8">
-        <div className="text-center">
-          <div className="mb-8">
-            <Spinner className="w-16 h-16 mx-auto text-blue-600" />
+    <div className="min-h-screen bg-gradient-to-br from-[#F7F9FB] via-[#E8F0FE] to-[#F0F9FF] flex items-center justify-center p-4">
+      <div className="max-w-lg w-full">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 md:p-10">
+          {/* Анимированные кольца */}
+          <div className="flex justify-center mb-8">
+            <AnimatedRings className="w-40 h-40" />
           </div>
           
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+          {/* Заголовок */}
+          <h1 className="text-3xl md:text-4xl font-bold text-center bg-gradient-to-r from-[#2553A1] to-[#22B07D] bg-clip-text text-transparent mb-6">
             Создаем ваш квест
           </h1>
           
-          <p className="text-lg text-gray-600 mb-8">
-            {generationHints[currentHintIndex]}
-          </p>
-          
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Ваше описание:</h3>
-            <p className="text-gray-700 italic">"{description}"</p>
+          {/* Текущая подсказка с плавной анимацией */}
+          <div className="min-h-[60px] flex items-center justify-center mb-8">
+            <p className="text-lg text-gray-700 text-center animate-fadeIn transition-all duration-500">
+              {generationHints[currentHintIndex]}
+            </p>
           </div>
           
-          <div className="flex justify-center space-x-2">
+          {/* Прогресс-бар */}
+          <div className="mb-8">
+            <div className="flex justify-between text-sm text-gray-500 mb-2">
+              <span>Прогресс создания</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-3" />
+          </div>
+          
+          {/* Описание квеста */}
+          <div className="bg-gradient-to-r from-[#F7F9FB] to-[#E8F0FE] rounded-xl p-6 border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+              Ваше задание:
+            </h3>
+            <p className="text-gray-800 italic leading-relaxed">
+              "{description}"
+            </p>
+          </div>
+          
+          {/* Индикаторы этапов */}
+          <div className="flex justify-center space-x-2 mt-8">
             {generationHints.map((_, index) => (
               <div
                 key={index}
-                className={`h-2 w-2 rounded-full transition-colors duration-300 ${
-                  index <= currentHintIndex ? 'bg-blue-600' : 'bg-gray-300'
+                className={`h-2 w-2 rounded-full transition-all duration-500 ${
+                  index <= currentHintIndex 
+                    ? 'bg-gradient-to-r from-[#2553A1] to-[#22B07D] w-8' 
+                    : 'bg-gray-300'
                 }`}
               />
             ))}
           </div>
+          
+          {/* Дополнительная информация */}
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Обычно генерация занимает 10-15 секунд
+          </p>
         </div>
       </div>
     </div>

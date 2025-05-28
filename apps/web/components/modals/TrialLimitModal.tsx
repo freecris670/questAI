@@ -1,94 +1,134 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { X as CloseIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Trophy, Sparkles, Gift, Crown, Star, Zap, Shield, Gem } from 'lucide-react';
 
 interface TrialLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  questsCreated: number;
-  maxTrialQuests?: number;
 }
 
-/**
- * Модальное окно, отображаемое при достижении лимита пробной версии
- */
-export function TrialLimitModal({ 
-  isOpen, 
-  onClose, 
-  questsCreated, 
-  maxTrialQuests = 2 
-}: TrialLimitModalProps) {
-  const [isVisible, setIsVisible] = useState(isOpen);
+export function TrialLimitModal({ isOpen, onClose }: TrialLimitModalProps) {
+  const router = useRouter();
 
-  useEffect(() => {
-    setIsVisible(isOpen);
-  }, [isOpen]);
+  const handleRegister = () => {
+    router.push('/auth');
+    onClose();
+  };
 
-  if (!isVisible) return null;
+  const handleContinue = () => {
+    onClose();
+  };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 animate-fadeIn">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6 relative animate-scaleIn">
-        <button 
-          onClick={onClose} 
-          className="absolute right-4 top-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-        >
-          <CloseIcon size={20} />
-        </button>
-        
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="32" 
-              height="32" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              className="text-quest-blue"
-            >
-              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"></path>
-              <path d="M12 8v4"></path>
-              <path d="M12 16h.01"></path>
-            </svg>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px] overflow-hidden p-0">
+        {/* Красивый градиентный заголовок */}
+        <div className="bg-gradient-to-br from-[#2553A1] via-[#3B82F6] to-[#22B07D] p-6 text-white">
+          <div className="flex items-center justify-center mb-4">
+            <div className="relative">
+              <Trophy className="w-16 h-16" />
+              <Sparkles className="w-6 h-6 absolute -top-1 -right-1 text-yellow-300 animate-pulse" />
+            </div>
           </div>
-          <h3 className="text-xl font-medium text-gray-900 dark:text-white">
-            Достигнут лимит пробной версии
-          </h3>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-center text-white">
+              Поздравляем! Вы создали 2 квеста!
+            </DialogTitle>
+            <DialogDescription className="text-center text-white/90 mt-2">
+              Вы отлично освоились с QuestAI! Готовы раскрыть весь потенциал платформы?
+            </DialogDescription>
+          </DialogHeader>
         </div>
         
-        <p className="text-gray-600 dark:text-gray-300 mb-6 text-center">
-          Вы создали {questsCreated} из {maxTrialQuests} доступных квестов в пробной версии. Чтобы продолжить создавать неограниченное количество квестов, пожалуйста, зарегистрируйтесь.
-        </p>
-        
-        <div className="flex flex-col space-y-3">
-          <Link href="/register" className="w-full">
-            <Button
-              className="w-full bg-quest-blue hover:bg-quest-blue/90 text-white font-medium py-2 px-4 rounded transition"
-            >
-              Зарегистрироваться
-            </Button>
-          </Link>
+        <div className="p-6">
+          {/* Преимущества регистрации */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <Gift className="w-5 h-5 mr-2 text-[#22B07D]" />
+              Что вас ждет после регистрации:
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#22B07D] to-[#1FA268] flex items-center justify-center flex-shrink-0">
+                  <Crown className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800">Безлимитное создание квестов</p>
+                  <p className="text-sm text-gray-600">Создавайте столько квестов, сколько захотите</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#F97316] flex items-center justify-center flex-shrink-0">
+                  <Star className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800">Сохранение прогресса</p>
+                  <p className="text-sm text-gray-600">Все ваши квесты и достижения в одном месте</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800">Продвинутые функции</p>
+                  <p className="text-sm text-gray-600">Кастомизация, командные квесты и многое другое</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2553A1] to-[#1E40AF] flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800">Эксклюзивные награды</p>
+                  <p className="text-sm text-gray-600">Уникальные достижения и бонусы для участников</p>
+                </div>
+              </div>
+            </div>
+          </div>
           
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="w-full border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium py-2 px-4 rounded transition"
-          >
-            Продолжить с ограничениями
-          </Button>
+          {/* Специальное предложение */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 mb-6 border border-amber-200">
+            <div className="flex items-center space-x-2 mb-1">
+              <Gem className="w-5 h-5 text-amber-600" />
+              <p className="font-semibold text-amber-800">Специальное предложение!</p>
+            </div>
+            <p className="text-sm text-amber-700">
+              Зарегистрируйтесь сейчас и получите <span className="font-bold">500 бонусных XP</span> для старта!
+            </p>
+          </div>
+          
+          {/* Кнопки действий */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={handleRegister}
+              className="flex-1 bg-gradient-to-r from-[#22B07D] to-[#1FA268] hover:from-[#1FA268] hover:to-[#1C8F5A] text-white font-medium shadow-lg"
+              size="lg"
+            >
+              <Sparkles className="w-5 h-5 mr-2" />
+              Начать приключение
+            </Button>
+            <Button 
+              onClick={handleContinue}
+              variant="outline"
+              className="flex-1"
+              size="lg"
+            >
+              Продолжить без регистрации
+            </Button>
+          </div>
+          
+          <p className="text-xs text-gray-500 text-center mt-4">
+            Регистрация бесплатна и занимает меньше минуты
+          </p>
         </div>
-        
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
-          Регистрация занимает меньше минуты и позволяет сохранять все созданные квесты
-        </p>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
