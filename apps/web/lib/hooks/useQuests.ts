@@ -79,6 +79,8 @@ export function useGenerateQuest() {
     mutationFn: async (params: {
       theme: string;
       difficulty: 'easy' | 'medium' | 'hard';
+      length?: 'short' | 'medium' | 'long'; // Добавлено поле длины квеста
+      userId?: string;                     // Добавлено поле ID пользователя
       additionalDetails?: string;
       isTrial?: boolean;
     }) => {
@@ -93,6 +95,8 @@ export function useGenerateQuest() {
         body: JSON.stringify({
           theme: params.theme,
           difficulty: params.difficulty,
+          length: params.length || 'medium',      // Значение по умолчанию 'medium'
+          userId: params.userId || 'anonymous',  // Значение по умолчанию 'anonymous'
           additionalDetails: params.additionalDetails
         })
       });

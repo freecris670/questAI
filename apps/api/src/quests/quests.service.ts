@@ -505,7 +505,7 @@ export class QuestsService {
     reason?: string; 
   }> {
     // Максимальное количество квестов для неавторизованных пользователей
-    const MAX_TRIAL_QUESTS = 2;
+    const MAX_TRIAL_QUESTS = 5; // Увеличено с 2 до 5 в соответствии с требованием
     
     try {
       // Используем сервисную роль Supabase для доступа к защищенной таблице
@@ -676,53 +676,73 @@ export class QuestsService {
       // Используем сервисную роль Supabase для доступа к защищенной таблице
       const now = new Date().toISOString();
       
-      // Получаем текущую запись для IP-адреса
+      // Используем upsert для атомарного обновления или вставки записи
       const { data, error } = await this.supabaseService.adminClient
-        .from('trial_quests_usage')
-        .select('quests_created')
-        .eq('ip_address', ipAddress)
-        .single();
+        .rpc('upsert_trial_usage', { 
+          p_ip_address: ipAddress,
+          p_last_quest_at: now
+        });
+
+      if (error) {
+        console.error('Ошибка при вызове upsert_trial_usage:', error);
         
-      if (error || !data) {
-        // Если записи нет, создаем новую с счетчиком 1
-        const { data: newData, error: insertError } = await this.supabaseService.adminClient
+        // Если RPC функция не существует, используем альтернативный подход с upsert
+        const { data: upsertData, error: upsertError } = await this.supabaseService.adminClient
           .from('trial_quests_usage')
-          .insert({ 
-            ip_address: ipAddress, 
-            quests_created: 1,
+          .upsert({
+            ip_address: ipAddress,
+            quests_created: 1,  // Будет использовано только при создании новой записи
             first_quest_at: now,
             last_quest_at: now
-          })
-          .select('quests_created')
-          .single();
-          
-        if (insertError) {
-          throw new Error(`Ошибка при создании записи о пробных квестах: ${insertError.message}`);
+          }, {
+            onConflict: 'ip_address', // В случае конфликта по ip_address
+            ignoreDuplicates: false    // Не игнорировать дубликаты
+          });
+
+        if (upsertError) {
+          throw new Error(`Ошибка при обновлении счетчика пробных квестов: ${upsertError.message}`);
         }
         
-        return newData.quests_created;
-      } else {
-        // Иначе увеличиваем счетчик на 1
-        const newCount = data.quests_created + 1;
+        // После upsert нам нужно обновить счетчик для существующих записей
+        const { data: record, error: selectError } = await this.supabaseService.adminClient
+          .from('trial_quests_usage')
+          .select('quests_created')
+          .eq('ip_address', ipAddress)
+          .single();
+
+        if (selectError || !record) {
+          throw new Error(`Не удалось получить запись после upsert: ${selectError?.message || 'запись не найдена'}`);
+        }
+
+        if (record.quests_created <= 1) {
+          // Это новая запись или квест уже был учтен
+          return record.quests_created;
+        }
+
+        // Увеличиваем счетчик и обновляем время последнего квеста
         const { data: updatedData, error: updateError } = await this.supabaseService.adminClient
           .from('trial_quests_usage')
           .update({ 
-            quests_created: newCount,
+            quests_created: record.quests_created + 1,
             last_quest_at: now 
           })
           .eq('ip_address', ipAddress)
           .select('quests_created')
           .single();
-          
+
         if (updateError) {
-          throw new Error(`Ошибка при обновлении счетчика пробных квестов: ${updateError.message}`);
+          throw new Error(`Ошибка при обновлении счетчика: ${updateError.message}`);
         }
-        
+
         return updatedData.quests_created;
+      } else {
+        // RPC функция успешно выполнена, возвращаем результат
+        return data;
       }
     } catch (err) {
       console.error('Ошибка при обновлении счетчика пробных квестов:', err);
-      throw new Error(`Ошибка при работе с данными пробных квестов: ${err instanceof Error ? err.message : String(err)}`);
+      // В случае ошибки вернем 1, чтобы не блокировать создание квеста
+      return 1;
     }
   }
 

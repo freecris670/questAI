@@ -3,14 +3,18 @@ CREATE TABLE IF NOT EXISTS trial_quests_usage (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   ip_address TEXT NOT NULL UNIQUE,
   quests_created INTEGER NOT NULL DEFAULT 0,
+  first_quest_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  last_quest_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 -- Комментарии к таблице и полям
-COMMENT ON TABLE trial_quests_usage IS 'Отслеживание использования пробного доступа по IP-адресам';
+COMMENT ON TABLE trial_quests_usage IS 'Отслеживание использования пробного доступа по IP-адресам. Лимит: 5 квестов на IP адрес';
 COMMENT ON COLUMN trial_quests_usage.ip_address IS 'IP-адрес пользователя';
 COMMENT ON COLUMN trial_quests_usage.quests_created IS 'Количество созданных квестов с этого IP-адреса';
+COMMENT ON COLUMN trial_quests_usage.first_quest_at IS 'Время создания первого квеста';
+COMMENT ON COLUMN trial_quests_usage.last_quest_at IS 'Время создания последнего квеста';
 
 -- Индекс для быстрого поиска по IP-адресу
 CREATE INDEX idx_trial_quests_ip ON trial_quests_usage(ip_address);

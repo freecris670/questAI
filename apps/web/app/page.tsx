@@ -21,7 +21,7 @@ export default function HomePage() {
   const { user } = useAuth();
   const [questDescription, setQuestDescription] = useState('');
   const [questsCreated, setQuestsCreated] = useState(0);
-  const maxTrialQuests = 2; // Константа для лимита пробных квестов
+  const maxTrialQuests = 5; // Константа для лимита пробных квестов
   const [showTrialLimitModal, setShowTrialLimitModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 

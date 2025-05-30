@@ -52,6 +52,9 @@ export default function GeneratingQuestPage() {
           theme: description,
           difficulty,
           additionalDetails: description,
+          // Добавляем обязательные поля, которые ожидает бэкенд
+          length: 'medium', // Добавляем поле длины квеста (short, medium, long)
+          userId: user?.id || 'anonymous', // Добавляем ID пользователя или anonymous для неавторизованных
           isTrial: !user // Если пользователь не авторизован, используем пробный режим
         });
         
