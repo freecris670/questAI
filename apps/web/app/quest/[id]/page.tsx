@@ -67,6 +67,11 @@ export default function QuestPage() {
   // Определяем данные для отображения
   const displayQuest = isTrialQuest ? trialQuestData : quest;
   const loading = isTrialQuest ? !trialQuestData : isLoading;
+  
+  // Если данные квеста не содержат задачи, добавляем пустой массив
+  if (displayQuest && !displayQuest.tasks) {
+    displayQuest.tasks = [];
+  }
 
   if (loading) {
     return (
@@ -109,10 +114,18 @@ export default function QuestPage() {
     );
   }
 
+  // Добавляем задачи из разных источников данных
+  const tasks = displayQuest?.tasks || displayQuest?.subtasks || [];
+  
   // Расчет общего прогресса квеста
-  const completedTasks = displayQuest.tasks?.filter((task: any) => task.completed).length || 0;
-  const totalTasks = displayQuest.tasks?.length || 0;
+  const completedTasks = tasks.filter((task: any) => task.completed).length || 0;
+  const totalTasks = tasks.length || 0;
   const questProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  
+  // Добавляем проверку и отладочную информацию
+  console.log('Данные квеста:', displayQuest);
+  console.log('Задачи квеста:', tasks);
+  console.log('Количество задач:', totalTasks);
   
   return (
     <div className="min-h-screen bg-[#F7F9FB] flex flex-col">
@@ -269,7 +282,7 @@ export default function QuestPage() {
         </div>
 
         {/* Список заданий в стиле MMORPG */}
-        {displayQuest.tasks && displayQuest.tasks.length > 0 && (
+        {tasks && tasks.length > 0 ? (
           <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-[#2553A1] flex items-center">
@@ -282,7 +295,7 @@ export default function QuestPage() {
             </div>
             
             <div className="space-y-4">
-              {displayQuest.tasks.map((task: { 
+              {tasks.map((task: { 
                 id: string; 
                 title: string; 
                 description: string; 
@@ -339,7 +352,7 @@ export default function QuestPage() {
               ))}
             </div>
           </div>
-        )}
+        ) : null}
       </main>
       
       <MainFooter />

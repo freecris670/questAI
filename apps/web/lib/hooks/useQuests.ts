@@ -178,7 +178,7 @@ export function useGenerateQuest() {
         
         // Устанавливаем таймаут для запроса
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 секунд таймаут
         
         const response = await fetch(apiUrl, {
           method: 'POST',

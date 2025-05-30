@@ -6,18 +6,19 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { Moon, Sun, Star as StarIcon } from 'lucide-react';
 import { LoginModal } from '@/components/auth/LoginModal';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 export const MainHeader = () => {
   const { theme, setTheme } = useTheme();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   
-  // Заглушка для авторизованного пользователя (в реальном приложении будет получаться из контекста или API)
-  const isAuthenticated = true;
-  const user = {
-    name: 'Eldritch Ranger',
-    level: 42,
-    avatar: 'https://i.pravatar.cc/150?img=68', // Случайный аватар для демонстрации
-  };
+  // Получаем данные авторизации из контекста
+  const { user, profile, loading } = useAuth();
+
+  const isAuthenticated = !!user;
+  const displayName = profile?.character_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Гость';
+  const avatarUrl = profile?.avatar_url || (isAuthenticated ? `https://i.pravatar.cc/150?u=${user?.id}` : 'https://i.pravatar.cc/150?img=1');
+  const userLevel = (profile as any)?.level ?? 1;
   
   return (
     <header className="bg-white dark:bg-gray-800 shadow-[0_2px_4px_rgba(0,0,0,0.05)] fixed top-0 left-0 right-0 z-50">
@@ -62,26 +63,32 @@ export const MainHeader = () => {
               {/* Информация о пользователе */}
               <div className="flex items-center">
                 <div className="mr-3 text-right hidden sm:block">
-                  <div className="font-medium text-gray-800 dark:text-gray-200">{user.name}</div>
-                  <div className="flex items-center text-sm text-amber-500">
-                    <StarIcon className="h-4 w-4 mr-1 fill-amber-500" />
-                    <span>Уровень {user.level}</span>
-                  </div>
+                  <div className="font-medium text-gray-800 dark:text-gray-200">{displayName}</div>
+                  {!loading && (
+                    <div className="flex items-center text-sm text-amber-500">
+                      <StarIcon className="h-4 w-4 mr-1 fill-amber-500" />
+                      <span>Уровень {userLevel}</span>
+                    </div>
+                  )}
                 </div>
-                
                 {/* Аватар с индикатором уровня */}
                 <div className="relative">
                   <div className="h-10 w-10 rounded-full overflow-hidden">
-                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                    <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
                   </div>
                   <div className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-gray-800">
-                    {user.level}
+                    {userLevel}
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <>
+            <div className="flex items-center gap-4">
+              {/* Информация о госте */}
+              <div className="mr-3 text-right hidden sm:block">
+                <div className="font-medium text-gray-800 dark:text-gray-200">Гость</div>
+              </div>
+              {/* Кнопки входа/регистрации */}
               <Button 
                 variant="outline" 
                 className="border-quest-blue text-quest-blue hover:bg-quest-blue/10 hover:text-quest-blue px-4 py-2 rounded-md text-sm md:text-base h-auto"
@@ -92,7 +99,7 @@ export const MainHeader = () => {
               <Button className="bg-quest-emerald hover:bg-quest-emerald/90 text-white px-4 py-2 rounded-md text-sm md:text-base h-auto">
                 Регистрация
               </Button>
-            </>
+            </div>
           )}
         </nav>
       </div>

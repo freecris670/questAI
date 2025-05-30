@@ -39,10 +39,10 @@ export default function GeneratingQuestPage() {
       
       // Устанавливаем таймаут для предотвращения зависания
       const timeoutId = setTimeout(() => {
-        console.error('Превышено время ожидания генерации квеста (30 секунд)');
+        console.error('Превышено время ожидания генерации квеста (60 секунд)');
         setIsGenerating(false);
         router.push('/?error=generation_timeout');
-      }, 30000); // 30 секунд таймаут
+      }, 60000); // 60 секунд таймаут
       
       try {
         console.log('Начинаем генерацию квеста с описанием:', description);
