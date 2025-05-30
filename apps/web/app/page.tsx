@@ -131,6 +131,13 @@ export default function HomePage() {
               className="h-[120px] border-[#E3E6EA] rounded-md focus:border-[#2553A1] resize-none w-full p-3 text-base"
               value={questDescription}
               onChange={(e) => setQuestDescription(e.target.value)}
+              onKeyDown={(e) => {
+                // Запуск генерации квеста по Ctrl+Enter
+                if (e.ctrlKey && e.key === 'Enter' && questDescription.trim()) {
+                  e.preventDefault();
+                  handleCreateQuest();
+                }
+              }}
             />
             <Button 
               onClick={handleCreateQuest}

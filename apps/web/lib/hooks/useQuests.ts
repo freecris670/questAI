@@ -14,7 +14,24 @@ export function useQuests(userId?: string) {
         params.append('userId', userId);
       }
       
-      const response = await fetch(getApiUrl(`quests?${params.toString()}`));
+      // Получаем токен авторизации из Supabase
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+      
+      // Формируем заголовки запроса
+      const headers: HeadersInit = {};
+      
+      // Добавляем заголовок авторизации, если есть токен
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      const response = await fetch(getApiUrl(`quests?${params.toString()}`), {
+        headers,
+        credentials: 'include'
+      });
+      
       if (!response.ok) {
         throw new Error('Ошибка при получении квестов');
       }
@@ -32,7 +49,24 @@ export function useQuest(id: string) {
   return useQuery({
     queryKey: ['quest', id],
     queryFn: async () => {
-      const response = await fetch(getApiUrl(`quests/${id}`));
+      // Получаем токен авторизации из Supabase
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+      
+      // Формируем заголовки запроса
+      const headers: HeadersInit = {};
+      
+      // Добавляем заголовок авторизации, если есть токен
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      const response = await fetch(getApiUrl(`quests/${id}`), {
+        headers,
+        credentials: 'include'
+      });
+      
       if (!response.ok) {
         throw new Error('Ошибка при получении квеста');
       }
@@ -54,11 +88,25 @@ export function useCreateQuest() {
       content: Record<string, unknown>;
       is_public?: boolean;
     }) => {
+      // Получаем токен авторизации из Supabase
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+      
+      // Формируем заголовки запроса
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Добавляем заголовок авторизации, если есть токен
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch(getApiUrl('quests'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify(questData)
       });
       
@@ -84,28 +132,75 @@ export function useGenerateQuest() {
       additionalDetails?: string;
       isTrial?: boolean;
     }) => {
-      // Используем разные эндпоинты для авторизованных и неавторизованных пользователей
-      const endpoint = params.isTrial ? 'quests/generate/trial' : 'quests/generate';
-      
-      const response = await fetch(getApiUrl(endpoint), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      try {
+        console.log('Начинаем процесс генерации квеста с параметрами:', params);
+        
+        // Используем разные эндпоинты для авторизованных и неавторизованных пользователей
+        const endpoint = params.isTrial ? 'quests/generate/trial' : 'quests/generate';
+        console.log('Выбран эндпоинт:', endpoint);
+        
+        // Убедимся, что все обязательные поля присутствуют
+        const requestData = {
           theme: params.theme,
           difficulty: params.difficulty,
           length: params.length || 'medium',      // Значение по умолчанию 'medium'
           userId: params.userId || 'anonymous',  // Значение по умолчанию 'anonymous'
-          additionalDetails: params.additionalDetails
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Ошибка при генерации квеста');
+          additionalDetails: params.additionalDetails || params.theme // Используем тему как дополнительную информацию если она не указана
+        };
+
+        console.log('Подготовлены данные для запроса:', requestData);
+        
+        // Получаем токен авторизации из Supabase
+        console.log('Получаем сессию из Supabase...');
+        const { supabase } = await import('@/lib/supabase');
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData?.session;
+        const authToken = session?.access_token;
+        
+        console.log('Статус авторизации:', authToken ? 'Авторизован' : 'Не авторизован');
+        
+        // Формируем заголовки запроса
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json'
+        };
+        
+        // Добавляем заголовок авторизации, если есть токен
+        if (authToken && !params.isTrial) {
+          console.log('Добавляем токен авторизации в заголовки');
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
+        // Для триальных квестов используем специальный эндпоинт
+        const apiUrl = getApiUrl(endpoint);
+        console.log('Отправляем запрос на URL:', apiUrl);
+        
+        console.log('Заголовки запроса:', headers);
+        
+        // Устанавливаем таймаут для запроса
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers,
+          credentials: 'include', // Важно для работы с куками и проверки лимитов
+          body: JSON.stringify(requestData),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId); // Очищаем таймаут после получения ответа
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Ошибка API при генерации квеста:', errorText);
+          throw new Error(`Ошибка при генерации квеста: ${response.status} ${errorText}`);
+        }
+        
+        return response.json();
+      } catch (error) {
+        console.error('Ошибка при генерации квеста:', error);
+        throw error; // Перебрасываем ошибку для обработки в компоненте
       }
-      
-      return response.json();
     }
   });
 }
@@ -121,11 +216,25 @@ export function useUpdateTaskProgress(questId: string) {
       completed: boolean;
       progress?: number;
     }) => {
+      // Получаем токен авторизации из Supabase
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+      
+      // Формируем заголовки запроса
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Добавляем заголовок авторизации, если есть токен
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch(getApiUrl(`quests/${questId}/progress`), {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify(data)
       });
 

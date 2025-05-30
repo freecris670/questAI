@@ -19,6 +19,19 @@ const AUTH_ROUTES = [
 ];
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  
+  // Пропускаем API запросы для триальных квестов
+  if (path.includes('/api/quests/generate/trial') || path.includes('/api/quests/trial')) {
+    return NextResponse.next();
+  }
+  
+  // Пропускаем API запросы пробных квестов
+  if (path.startsWith('/quest/generating') || 
+      (path.includes('/quest/') && path.includes('/details'))) {
+    return NextResponse.next();
+  }
+  
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -48,7 +61,6 @@ export async function middleware(request: NextRequest) {
   
   // Проверяем сессию
   const { data: { session } } = await supabase.auth.getSession();
-  const path = request.nextUrl.pathname;
   
   // Защита маршрутов, требующих авторизации
   const isProtectedRoute = PROTECTED_ROUTES.some(route => path.startsWith(route));
@@ -90,8 +102,9 @@ export const config = {
     /*
      * Пропускаем все внутренние пути Next.js (_next)
      * Пропускаем статические файлы (статические, favicon, изображения и т.д.)
+     * Пропускаем API запросы для триальных квестов
      */
-    '/((?!_next/static|_next/image|favicon.ico|images|avatars).*)',
+    '/((?!_next/static|_next/image|favicon.ico|images|avatars|api/quests/generate/trial|api/quests/trial).*)',
   ],
 };
 

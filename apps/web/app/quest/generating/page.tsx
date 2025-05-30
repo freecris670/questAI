@@ -37,7 +37,25 @@ export default function GeneratingQuestPage() {
       
       setIsGenerating(true);
       
+      // Устанавливаем таймаут для предотвращения зависания
+      const timeoutId = setTimeout(() => {
+        console.error('Превышено время ожидания генерации квеста (30 секунд)');
+        setIsGenerating(false);
+        router.push('/?error=generation_timeout');
+      }, 30000); // 30 секунд таймаут
+      
       try {
+        console.log('Начинаем генерацию квеста с описанием:', description);
+        
+        // Проверяем длину описания
+        if (description.length > 1500) {
+          console.warn('Слишком длинное описание квеста:', description.length, 'символов');
+          clearTimeout(timeoutId);
+          setIsGenerating(false);
+          router.push('/?error=description_too_long');
+          return;
+        }
+        
         // Определяем сложность на основе описания (простая логика)
         let difficulty: 'easy' | 'medium' | 'hard' = 'medium';
         const lowerDesc = description.toLowerCase();
@@ -47,32 +65,64 @@ export default function GeneratingQuestPage() {
           difficulty = 'hard';
         }
         
-        // Генерируем квест (используем пробный режим для неавторизованных)
-        const questData = await generateQuest.mutateAsync({
+        console.log('Определена сложность квеста:', difficulty);
+        
+        // Готовим параметры для запроса
+        const requestParams = {
           theme: description,
           difficulty,
           additionalDetails: description,
           // Добавляем обязательные поля, которые ожидает бэкенд
-          length: 'medium', // Добавляем поле длины квеста (short, medium, long)
+          length: 'medium' as 'short' | 'medium' | 'long', // Добавляем поле длины квеста (short, medium, long)
           userId: user?.id || 'anonymous', // Добавляем ID пользователя или anonymous для неавторизованных
           isTrial: !user // Если пользователь не авторизован, используем пробный режим
-        });
+        };
+        
+        console.log('Отправляем запрос на генерацию с параметрами:', requestParams);
+        
+        // Генерируем квест (используем пробный режим для неавторизованных)
+        const questData = await generateQuest.mutateAsync(requestParams);
+        
+        // Очищаем таймаут после получения ответа
+        clearTimeout(timeoutId);
+        
+        console.log('Получены данные квеста:', questData);
         
         // Если это пробный квест, сохраняем его в localStorage
         if (!user && questData && questData.id && questData.id.startsWith('trial_')) {
           localStorage.setItem(`quest_${questData.id}`, JSON.stringify(questData));
+          console.log('Сохранен пробный квест в localStorage:', questData.id);
         }
         
-        // Переходим на страницу с результатом
+        // После успешной генерации перенаправляем на страницу квеста
         if (questData && questData.id) {
-          router.push(`/quest/${questData.id}/details`);
+          // Перенаправляем на страницу квеста
+          router.push(`/quest/${questData.id}`);
+          console.log('Перенаправление на страницу квеста:', `/quest/${questData.id}`);
         } else {
-          throw new Error('Не удалось получить ID квеста');
+          console.error('Не удалось получить ID квеста');
+          router.push('/?error=generation_failed');
         }
       } catch (error) {
-        console.error('Ошибка при генерации квеста:', error);
-        // Возвращаем на главную с сообщением об ошибке
-        router.push('/?error=generation_failed');
+        // Очищаем таймаут в случае ошибки
+        clearTimeout(timeoutId);
+        
+        // Улучшенная обработка ошибок
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Ошибка при генерации квеста:', errorMessage);
+        
+        // Анализируем ошибку для более точного сообщения пользователю
+        if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+          console.error('Ошибка авторизации при генерации квеста');
+          router.push('/?error=authorization_failed');
+        } else if (errorMessage.includes('timeout') || errorMessage.includes('abort')) {
+          console.error('Превышено время ожидания ответа от сервера');
+          router.push('/?error=server_timeout');
+        } else {
+          router.push('/?error=generation_failed');
+        }
+        
+        setIsGenerating(false);
       }
     };
     
