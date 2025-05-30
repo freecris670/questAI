@@ -71,7 +71,8 @@ export class QuestsController {
     // Регистрируем попытку создания квеста
     await this.questsService.recordQuestAttempt(ip);
     
-    return this.questsService.generateQuest(userId, generateQuestDto);
+    // Передаем IP-адрес в метод generateQuest для отслеживания дубликатов
+    return this.questsService.generateQuest(userId, generateQuestDto, ip);
   }
 
   @Post('generate/trial')
@@ -106,7 +107,7 @@ export class QuestsController {
     await this.questsService.recordQuestAttempt(ip);
     
     // Генерируем квест для анонимного пользователя
-    const quest = await this.questsService.generateTrialQuest(generateQuestDto);
+    const quest = await this.questsService.generateTrialQuest(generateQuestDto, ip);
     
     // Увеличиваем счетчик общего количества квестов
     await this.questsService.incrementTrialQuestsCount(ip);

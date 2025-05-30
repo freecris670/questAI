@@ -27,13 +27,47 @@ export default function GeneratingQuestPage() {
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationId, setGenerationId] = useState<string>("");
   
   const generateQuest = useGenerateQuest();
 
   useEffect(() => {
+    // Функция для проверки, был ли уже запущен процесс генерации
+    const checkIfGenerationStarted = () => {
+      // Создаем уникальный идентификатор для текущего запроса генерации
+      const requestId = `generation_${description.substring(0, 20).replace(/\s+/g, '_')}_${Date.now()}`;
+      
+      // Проверяем, был ли уже запущен процесс генерации с таким же описанием
+      const inProgressId = localStorage.getItem('quest_generation_in_progress');
+      
+      // Если процесс уже запущен и это не текущий запрос - прерываем
+      if (inProgressId && inProgressId !== requestId) {
+        console.warn('Процесс генерации уже запущен с ID:', inProgressId);
+        return { alreadyStarted: true, requestId };
+      }
+      
+      // Записываем текущий ID генерации
+      localStorage.setItem('quest_generation_in_progress', requestId);
+      setGenerationId(requestId);
+      return { alreadyStarted: false, requestId };
+    };
+    
     // Запускаем генерацию квеста при загрузке страницы
+    const generationStartedRef = { current: false };
+    
     const startGeneration = async () => {
-      if (!description || isGenerating) return;
+      // Предотвращаем повторный запуск в одном и том же рендере
+      if (!description || isGenerating || generationStartedRef.current) return;
+      
+      // Помечаем, что генерация запущена для текущего рендера
+      generationStartedRef.current = true;
+      
+      // Проверяем, не запущен ли уже процесс генерации
+      const { alreadyStarted, requestId } = checkIfGenerationStarted();
+      if (alreadyStarted) {
+        console.warn('Пропускаем повторный запуск генерации квеста');
+        return;
+      }
       
       setIsGenerating(true);
       
@@ -41,6 +75,7 @@ export default function GeneratingQuestPage() {
       const timeoutId = setTimeout(() => {
         console.error('Превышено время ожидания генерации квеста (60 секунд)');
         setIsGenerating(false);
+        localStorage.removeItem('quest_generation_in_progress');
         router.push('/?error=generation_timeout');
       }, 60000); // 60 секунд таймаут
       
@@ -86,6 +121,9 @@ export default function GeneratingQuestPage() {
         // Очищаем таймаут после получения ответа
         clearTimeout(timeoutId);
         
+        // Очищаем статус генерации в localStorage
+        localStorage.removeItem('quest_generation_in_progress');
+        
         console.warn('Получены данные квеста:', questData);
         
         // Если это пробный квест, сохраняем его в localStorage
@@ -107,6 +145,9 @@ export default function GeneratingQuestPage() {
         // Очищаем таймаут в случае ошибки
         clearTimeout(timeoutId);
         
+        // Очищаем статус генерации в localStorage
+        localStorage.removeItem('quest_generation_in_progress');
+        
         // Улучшенная обработка ошибок
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('Ошибка при генерации квеста:', errorMessage);
@@ -127,8 +168,12 @@ export default function GeneratingQuestPage() {
     };
     
     startGeneration();
+    
+    // Функция очистки для useEffect
+    return () => {
+      generationStartedRef.current = true; // Предотвращаем запуск после размонтирования
+    };
   }, [description, generateQuest, router, isGenerating, user]);
-
   // Анимация прогресс-бара
   useEffect(() => {
     const progressInterval = setInterval(() => {
@@ -140,6 +185,18 @@ export default function GeneratingQuestPage() {
 
     return () => clearInterval(progressInterval);
   }, []);
+  
+  // Очищаем статус генерации при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      if (generationId) {
+        const currentId = localStorage.getItem('quest_generation_in_progress');
+        if (currentId === generationId) {
+          localStorage.removeItem('quest_generation_in_progress');
+        }
+      }
+    };
+  }, [generationId]);
 
   // Меняем подсказки каждые 2.5 секунды
   useEffect(() => {

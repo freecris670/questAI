@@ -1,0 +1,5 @@
+# Перенаправление для API запросов
+/api/*  /.netlify/functions/api/:splat  200
+
+# Fallback для SPA роутинга
+/*      /index.html     200

@@ -1,9 +1,13 @@
 /**
  * Конфигурация приложения
  */
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const config = {
   // API URL с fallback на localhost
+  // В production среде используем Supabase напрямую через браузер
   apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  isProduction,
   
   // Supabase конфигурация
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,

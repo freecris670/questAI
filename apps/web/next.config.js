@@ -4,7 +4,10 @@ const path = require('path');
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@questai/ui"],
+  // Необходимо для правильной работы с Netlify
+  output: 'standalone',
   images: {
+    unoptimized: process.env.NODE_ENV === 'production',
     remotePatterns: [
       {
         protocol: 'http',
@@ -14,11 +17,17 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      // Для поддержки развертывания на Netlify
+      {
+        protocol: 'https',
+        hostname: '*.netlify.app',
+      },
     ],
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000"],
+      // Разрешаем домены Netlify
+      allowedOrigins: ["localhost:3000", "*.netlify.app"],
     },
   },
   webpack: (config) => {

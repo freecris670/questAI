@@ -4,12 +4,32 @@ import { OpenAiService } from '../openai/openai.service';
 import { CreateQuestDto, UpdateQuestDto, GenerateQuestDto, UpdateQuestProgressDto, PublishQuestDto, GenerateContentDto } from './dto';
 import { IQuest, IQuestDetails, IGeneratedQuestData, IQuestProgress } from '../interfaces/quest.interfaces';
 
+// Интерфейс для хранения информации о запросах на генерацию
+interface IGenerationRequest {
+  requestId: string;
+  userId: string;
+  ipAddress: string;
+  timestamp: number;
+  params: GenerateQuestDto;
+  result?: IGeneratedQuestData;
+  isTrial: boolean;
+}
+
 @Injectable()
 export class QuestsService {
+  // Хранилище активных запросов на генерацию
+  private activeGenerationRequests: Map<string, IGenerationRequest> = new Map();
+  
+  // Время жизни запроса в кэше (15 минут)
+  private readonly GENERATION_REQUEST_TTL = 15 * 60 * 1000;
+  
   constructor(
     private supabaseService: SupabaseService,
     private openAiService: OpenAiService,
-  ) {}
+  ) {
+    // Запускаем периодическую очистку устаревших запросов
+    this.startGenerationRequestsCleanup();
+  }
 
   /**
    * Получение всех квестов
@@ -157,80 +177,272 @@ export class QuestsService {
   }
 
   /**
+   * Запуск периодической очистки устаревших запросов на генерацию
+   * @private
+   */
+  private startGenerationRequestsCleanup(): void {
+    setInterval(() => {
+      const now = Date.now();
+      // Проходим по всем запросам и удаляем устаревшие
+      this.activeGenerationRequests.forEach((request, requestId) => {
+        if (now - request.timestamp > this.GENERATION_REQUEST_TTL) {
+          this.activeGenerationRequests.delete(requestId);
+          console.log(`Очищен устаревший запрос на генерацию: ${requestId}`);
+        }
+      });
+    }, 5 * 60 * 1000); // Проверка каждые 5 минут
+  }
+
+  /**
+   * Создает уникальный идентификатор для запроса на генерацию
+   * @param userId ID пользователя или 'anonymous'
+   * @param params Параметры генерации
+   * @param isTrial Является ли запрос пробным
+   * @returns Уникальный идентификатор запроса
+   * @private
+   */
+  private generateRequestId(userId: string, params: GenerateQuestDto, isTrial: boolean): string {
+    // Нормализуем параметры для консистентного ID
+    const normalizedTheme = params.theme.substring(0, 50).toLowerCase().trim();
+    return `quest_${isTrial ? 'trial_' : ''}${userId}_${normalizedTheme}_${Date.now()}`;
+  }
+
+  /**
+   * Проверяет, существует ли уже активный запрос на генерацию с похожими параметрами
+   * @param userId ID пользователя
+   * @param params Параметры генерации
+   * @param ipAddress IP-адрес пользователя
+   * @param isTrial Является ли запрос пробным
+   * @returns Объект с результатом проверки и ID запроса
+   * @private
+   */
+  private checkExistingGenerationRequest(userId: string, params: GenerateQuestDto, ipAddress: string, isTrial: boolean): { exists: boolean; requestId: string; existingResult?: IGeneratedQuestData } {
+    const requestId = this.generateRequestId(userId, params, isTrial);
+    
+    // Ищем похожие активные запросы (с той же темой от того же пользователя/IP)
+    for (const [id, request] of this.activeGenerationRequests.entries()) {
+      const sameUser = request.userId === userId || request.ipAddress === ipAddress;
+      const similarTheme = request.params.theme.toLowerCase().includes(params.theme.toLowerCase()) ||
+                          params.theme.toLowerCase().includes(request.params.theme.toLowerCase());
+      
+      if (sameUser && similarTheme && request.isTrial === isTrial) {
+        console.log(`Найден существующий запрос на генерацию: ${id}`);
+        
+        // Если запрос уже имеет результат, возвращаем его
+        if (request.result) {
+          return { exists: true, requestId: id, existingResult: request.result };
+        }
+        
+        // Запрос существует, но результата еще нет
+        return { exists: true, requestId: id };
+      }
+    }
+    
+    // Запрос не существует
+    return { exists: false, requestId };
+  }
+
+  /**
+   * Регистрирует новый запрос на генерацию
+   * @param requestId ID запроса
+   * @param userId ID пользователя
+   * @param ipAddress IP-адрес пользователя
+   * @param params Параметры генерации
+   * @param isTrial Является ли запрос пробным
+   * @private
+   */
+  private registerGenerationRequest(requestId: string, userId: string, ipAddress: string, params: GenerateQuestDto, isTrial: boolean): void {
+    this.activeGenerationRequests.set(requestId, {
+      requestId,
+      userId,
+      ipAddress,
+      timestamp: Date.now(),
+      params,
+      isTrial
+    });
+    
+    console.log(`Зарегистрирован новый запрос на генерацию: ${requestId}`);
+  }
+
+  /**
+   * Устанавливает результат для запроса на генерацию
+   * @param requestId ID запроса
+   * @param result Результат генерации
+   * @private
+   */
+  private setGenerationResult(requestId: string, result: IGeneratedQuestData): void {
+    const request = this.activeGenerationRequests.get(requestId);
+    if (request) {
+      request.result = result;
+      this.activeGenerationRequests.set(requestId, request);
+      console.log(`Установлен результат для запроса на генерацию: ${requestId}`);
+    }
+  }
+
+  /**
    * Генерация нового квеста с помощью OpenAI
    * @param userId ID пользователя, создающего квест
    * @param params Параметры генерации квеста
+   * @param ipAddress IP-адрес пользователя для отслеживания дубликатов
    */
-  async generateQuest(userId: string, params: GenerateQuestDto): Promise<IGeneratedQuestData> {
-    // Параметры для генерации квеста
-    const { theme, difficulty, length, additionalDetails } = params;
-
-    // Генерируем квест с помощью OpenAI
-    const questContent = await this.openAiService.generateQuest({
-      theme,
-      complexity: difficulty, // Используем difficulty вместо complexity
-      length
-      // Дополнительные параметры можно добавить позже при необходимости
-    });
+  async generateQuest(userId: string, params: GenerateQuestDto, ipAddress: string = '0.0.0.0'): Promise<IGeneratedQuestData> {
+    // Проверяем, существует ли уже похожий запрос
+    const { exists, requestId, existingResult } = this.checkExistingGenerationRequest(userId, params, ipAddress, false);
     
-    // Если есть дополнительные детали, можно их обработать дополнительно
-    // или модифицировать сгенерированный контент
-
-    // Создаем новый квест в базе данных
-    const newQuest = await this.create({
-      title: questContent.title,
-      description: questContent.description,
-      content: questContent,
-      user_id: userId,
-      isPublic: false, // По умолчанию квест приватный
-    });
-
-    // Преобразуем данные в формат IGeneratedQuestData
-    return {
-      id: newQuest.id,
-      title: newQuest.title,
-      description: newQuest.description,
-      questType: questContent.questType || 'adventure',
-      difficulty: difficulty,
-      tasks: questContent.tasks || [],
-      rewards: {
-        xp: questContent.rewards?.xp || 100,
-        itemName: questContent.rewards?.itemName || 'Награда за квест'
+    // Если запрос существует и у него есть результат, возвращаем этот результат
+    if (exists && existingResult) {
+      console.log(`Возвращаем существующий результат для запроса: ${requestId}`);
+      return existingResult;
+    }
+    
+    // Если запрос существует, но результата еще нет, ждем некоторое время и проверяем снова
+    if (exists) {
+      console.log(`Ожидаем результат для существующего запроса: ${requestId}`);
+      
+      // Ждем до 10 секунд, проверяя каждые 500 мс
+      for (let i = 0; i < 120; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const request = this.activeGenerationRequests.get(requestId);
+        if (request?.result) {
+          console.log(`Получен результат для ожидающего запроса: ${requestId}`);
+          return request.result;
+        }
       }
-    };
+      
+      // Если после ожидания результата нет, создаем новый запрос
+      console.log(`Тайм-аут ожидания результата, создаем новый запрос`);
+    }
+    
+    // Регистрируем новый запрос
+    this.registerGenerationRequest(requestId, userId, ipAddress, params, false);
+    
+    try {
+      // Параметры для генерации квеста
+      const { theme, difficulty, length, additionalDetails } = params;
+  
+      // Генерируем квест с помощью OpenAI
+      const questContent = await this.openAiService.generateQuest({
+        theme,
+        complexity: difficulty, // Используем difficulty вместо complexity
+        length
+        // Дополнительные параметры можно добавить позже при необходимости
+      });
+      
+      // Если есть дополнительные детали, можно их обработать дополнительно
+      // или модифицировать сгенерированный контент
+  
+      // Создаем новый квест в базе данных
+      const newQuest = await this.create({
+        title: questContent.title,
+        description: questContent.description,
+        content: questContent,
+        user_id: userId,
+        isPublic: false, // По умолчанию квест приватный
+      });
+  
+      // Преобразуем данные в формат IGeneratedQuestData
+      const result = {
+        id: newQuest.id,
+        title: newQuest.title,
+        description: newQuest.description,
+        questType: questContent.questType || 'adventure',
+        difficulty: difficulty,
+        tasks: questContent.tasks || [],
+        rewards: {
+          xp: questContent.rewards?.xp || 100,
+          itemName: questContent.rewards?.itemName || 'Награда за квест'
+        }
+      };
+      
+      // Сохраняем результат в кэше
+      this.setGenerationResult(requestId, result);
+      
+      return result;
+    } catch (error) {
+      // В случае ошибки удаляем запрос из кэша
+      this.activeGenerationRequests.delete(requestId);
+      throw error;
+    }
   }
 
   /**
    * Генерация пробного квеста без авторизации
    * @param params Параметры генерации квеста
+   * @param ipAddress IP-адрес пользователя для отслеживания дубликатов
    */
-  async generateTrialQuest(params: GenerateQuestDto): Promise<IGeneratedQuestData> {
-    // Параметры для генерации квеста
-    const { theme, difficulty, length, additionalDetails } = params;
-
-    // Генерируем квест с помощью OpenAI
-    const questContent = await this.openAiService.generateQuest({
-      theme,
-      complexity: difficulty,
-      length
-    });
-
-    // Создаем временный ID для пробного квеста
-    const trialQuestId = `trial_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Преобразуем данные в формат IGeneratedQuestData
-    return {
-      id: trialQuestId,
-      title: questContent.title,
-      description: questContent.description,
-      questType: questContent.questType || 'adventure',
-      difficulty: difficulty,
-      tasks: questContent.tasks || [],
-      rewards: {
-        xp: questContent.rewards?.xp || 100,
-        itemName: questContent.rewards?.itemName || 'Награда за квест'
+  async generateTrialQuest(params: GenerateQuestDto, ipAddress: string = '0.0.0.0'): Promise<IGeneratedQuestData> {
+    // Используем 'anonymous' в качестве userId для триальных запросов
+    const anonymousId = 'anonymous';
+    
+    // Проверяем, существует ли уже похожий запрос
+    const { exists, requestId, existingResult } = this.checkExistingGenerationRequest(anonymousId, params, ipAddress, true);
+    
+    // Если запрос существует и у него есть результат, возвращаем этот результат
+    if (exists && existingResult) {
+      console.log(`Возвращаем существующий результат для пробного запроса: ${requestId}`);
+      return existingResult;
+    }
+    
+    // Если запрос существует, но результата еще нет, ждем некоторое время и проверяем снова
+    if (exists) {
+      console.log(`Ожидаем результат для существующего пробного запроса: ${requestId}`);
+      
+      // Ждем до 10 секунд, проверяя каждые 500 мс
+      for (let i = 0; i < 120; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const request = this.activeGenerationRequests.get(requestId);
+        if (request?.result) {
+          console.log(`Получен результат для ожидающего пробного запроса: ${requestId}`);
+          return request.result;
+        }
       }
-    };
+      
+      // Если после ожидания результата нет, создаем новый запрос
+      console.log(`Тайм-аут ожидания результата, создаем новый пробный запрос`);
+    }
+    
+    // Регистрируем новый запрос
+    this.registerGenerationRequest(requestId, anonymousId, ipAddress, params, true);
+    
+    try {
+      // Параметры для генерации квеста
+      const { theme, difficulty, length, additionalDetails } = params;
+  
+      // Генерируем квест с помощью OpenAI
+      const questContent = await this.openAiService.generateQuest({
+        theme,
+        complexity: difficulty,
+        length
+      });
+  
+      // Создаем временный ID для пробного квеста
+      const trialQuestId = `trial_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+      // Преобразуем данные в формат IGeneratedQuestData
+      const result = {
+        id: trialQuestId,
+        title: questContent.title,
+        description: questContent.description,
+        questType: questContent.questType || 'adventure',
+        difficulty: difficulty,
+        tasks: questContent.tasks || [],
+        rewards: {
+          xp: questContent.rewards?.xp || 100,
+          itemName: questContent.rewards?.itemName || 'Награда за квест'
+        }
+      };
+      
+      // Сохраняем результат в кэше
+      this.setGenerationResult(requestId, result);
+      
+      return result;
+    } catch (error) {
+      // В случае ошибки удаляем запрос из кэша
+      this.activeGenerationRequests.delete(requestId);
+      throw error;
+    }
   }
 
   /**
