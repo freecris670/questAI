@@ -133,11 +133,11 @@ export function useGenerateQuest() {
       isTrial?: boolean;
     }) => {
       try {
-        console.log('Начинаем процесс генерации квеста с параметрами:', params);
+        console.warn('Начинаем процесс генерации квеста с параметрами:', params);
         
         // Используем разные эндпоинты для авторизованных и неавторизованных пользователей
         const endpoint = params.isTrial ? 'quests/generate/trial' : 'quests/generate';
-        console.log('Выбран эндпоинт:', endpoint);
+        console.warn('Выбран эндпоинт:', endpoint);
         
         // Убедимся, что все обязательные поля присутствуют
         const requestData = {
@@ -148,16 +148,16 @@ export function useGenerateQuest() {
           additionalDetails: params.additionalDetails || params.theme // Используем тему как дополнительную информацию если она не указана
         };
 
-        console.log('Подготовлены данные для запроса:', requestData);
+        console.warn('Подготовлены данные для запроса:', requestData);
         
         // Получаем токен авторизации из Supabase
-        console.log('Получаем сессию из Supabase...');
+        console.warn('Получаем сессию из Supabase...');
         const { supabase } = await import('@/lib/supabase');
         const { data: sessionData } = await supabase.auth.getSession();
         const session = sessionData?.session;
         const authToken = session?.access_token;
         
-        console.log('Статус авторизации:', authToken ? 'Авторизован' : 'Не авторизован');
+        console.warn('Статус авторизации:', authToken ? 'Авторизован' : 'Не авторизован');
         
         // Формируем заголовки запроса
         const headers: HeadersInit = {
@@ -166,15 +166,15 @@ export function useGenerateQuest() {
         
         // Добавляем заголовок авторизации, если есть токен
         if (authToken && !params.isTrial) {
-          console.log('Добавляем токен авторизации в заголовки');
+          console.warn('Добавляем токен авторизации в заголовки');
           headers['Authorization'] = `Bearer ${authToken}`;
         }
         
         // Для триальных квестов используем специальный эндпоинт
         const apiUrl = getApiUrl(endpoint);
-        console.log('Отправляем запрос на URL:', apiUrl);
+        console.warn('Отправляем запрос на URL:', apiUrl);
         
-        console.log('Заголовки запроса:', headers);
+        console.warn('Заголовки запроса:', headers);
         
         // Устанавливаем таймаут для запроса
         const controller = new AbortController();

@@ -18,7 +18,11 @@ export const MainHeader = () => {
   const isAuthenticated = !!user;
   const displayName = profile?.character_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Гость';
   const avatarUrl = profile?.avatar_url || (isAuthenticated ? `https://i.pravatar.cc/150?u=${user?.id}` : 'https://i.pravatar.cc/150?img=1');
-  const userLevel = (profile as any)?.level ?? 1;
+
+  interface ProfileWithLevel {
+    level?: number;
+  }
+  const userLevel = (profile as ProfileWithLevel | null)?.level ?? 1;
   
   return (
     <header className="bg-white dark:bg-gray-800 shadow-[0_2px_4px_rgba(0,0,0,0.05)] fixed top-0 left-0 right-0 z-50">

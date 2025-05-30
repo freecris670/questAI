@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check as CheckIcon, Trophy as TrophyIcon } from 'lucide-react';
+import { Trophy as TrophyIcon } from 'lucide-react';
 import { QuestTask } from '../types';
 import { useUpdateTaskProgress } from '@/lib/hooks/useQuests';
 import { useState } from 'react';
@@ -62,8 +62,7 @@ export function QuestTasks({ tasks, activeTaskId, questId }: QuestTasksProps) {
       </CardHeader>
       <CardContent className="pt-2">
         <div className="space-y-4">
-          {localTasks.map((task, index) => {
-            const fillProgress = !task.completed && task.progress > 0;
+          {localTasks.map((task) => {
             
             return (
               <div 

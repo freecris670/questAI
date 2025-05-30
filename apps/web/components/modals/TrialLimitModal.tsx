@@ -12,7 +12,7 @@ interface TrialLimitModalProps {
   maxTrialQuests?: number; // Максимальное количество квестов в пробном режиме
 }
 
-export function TrialLimitModal({ isOpen, onClose, questsCreated = 2, maxTrialQuests = 2 }: TrialLimitModalProps) {
+export function TrialLimitModal({ isOpen, onClose, questsCreated = 5 }: TrialLimitModalProps) {
   const router = useRouter();
 
   const handleRegister = () => {
@@ -37,7 +37,7 @@ export function TrialLimitModal({ isOpen, onClose, questsCreated = 2, maxTrialQu
           </div>
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center text-white">
-              Поздравляем! Вы создали {questsCreated || 2} {questsCreated === 1 ? 'квест' : 'квеста'}!
+              Поздравляем! Вы создали {questsCreated || 5} {questsCreated === 1 ? 'квест' : 'квеста'}!
             </DialogTitle>
             <DialogDescription className="text-center text-white/90 mt-2">
               Вы отлично освоились с QuestAI! Готовы раскрыть весь потенциал платформы?

@@ -45,7 +45,7 @@ export default function GeneratingQuestPage() {
       }, 60000); // 60 секунд таймаут
       
       try {
-        console.log('Начинаем генерацию квеста с описанием:', description);
+        console.warn('Начинаем генерацию квеста с описанием:', description);
         
         // Проверяем длину описания
         if (description.length > 1500) {
@@ -65,7 +65,7 @@ export default function GeneratingQuestPage() {
           difficulty = 'hard';
         }
         
-        console.log('Определена сложность квеста:', difficulty);
+        console.warn('Определена сложность квеста:', difficulty);
         
         // Готовим параметры для запроса
         const requestParams = {
@@ -78,7 +78,7 @@ export default function GeneratingQuestPage() {
           isTrial: !user // Если пользователь не авторизован, используем пробный режим
         };
         
-        console.log('Отправляем запрос на генерацию с параметрами:', requestParams);
+        console.warn('Отправляем запрос на генерацию с параметрами:', requestParams);
         
         // Генерируем квест (используем пробный режим для неавторизованных)
         const questData = await generateQuest.mutateAsync(requestParams);
@@ -86,19 +86,19 @@ export default function GeneratingQuestPage() {
         // Очищаем таймаут после получения ответа
         clearTimeout(timeoutId);
         
-        console.log('Получены данные квеста:', questData);
+        console.warn('Получены данные квеста:', questData);
         
         // Если это пробный квест, сохраняем его в localStorage
         if (!user && questData && questData.id && questData.id.startsWith('trial_')) {
           localStorage.setItem(`quest_${questData.id}`, JSON.stringify(questData));
-          console.log('Сохранен пробный квест в localStorage:', questData.id);
+          console.warn('Сохранен пробный квест в localStorage:', questData.id);
         }
         
         // После успешной генерации перенаправляем на страницу квеста
         if (questData && questData.id) {
           // Перенаправляем на страницу квеста
           router.push(`/quest/${questData.id}`);
-          console.log('Перенаправление на страницу квеста:', `/quest/${questData.id}`);
+          console.warn('Перенаправление на страницу квеста:', `/quest/${questData.id}`);
         } else {
           console.error('Не удалось получить ID квеста');
           router.push('/?error=generation_failed');

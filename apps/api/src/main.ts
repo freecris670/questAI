@@ -3,7 +3,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
-import { ThrottlerModule } from '@nestjs/throttler';
 
 async function bootstrap() {
   // Используем явное приведение типа для Express
@@ -42,9 +41,9 @@ async function bootstrap() {
   
   // Настройка информационного логирования о превышении лимитов запросов
   app.useLogger({
-    log: (message: any) => console.log(message),
-    error: (message: any) => console.error(message),
-    warn: (message: any) => {
+    log: (message: unknown) => console.log(message),
+    error: (message: unknown) => console.error(message),
+    warn: (message: unknown) => {
       // Отслеживаем превышение лимитов
       if (typeof message === 'string' && message.includes('ThrottlerException')) {
         console.warn(`[Rate Limit] ${message}`);
@@ -52,8 +51,8 @@ async function bootstrap() {
         console.warn(message);
       }
     },
-    debug: (message: any) => console.debug(message),
-    verbose: (message: any) => console.log(message),
+    debug: (message: unknown) => console.debug(message),
+    verbose: (message: unknown) => console.log(message),
   });
 
   // Запускаем приложение

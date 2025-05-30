@@ -49,7 +49,13 @@ export default function QuestPage() {
   
   // Проверяем, является ли это пробным квестом
   const isTrialQuest = questId.startsWith('trial_');
-  const [trialQuestData, setTrialQuestData] = useState<any>(null);
+  // Define a proper type for quest data
+  type QuestData = {
+    tasks?: {id: string; title: string; description: string; xp: number; completed?: boolean}[];
+    subtasks?: {id: string; title: string; description: string; xp: number; completed?: boolean}[];
+    [key: string]: unknown;
+  };
+  const [trialQuestData, setTrialQuestData] = useState<QuestData | null>(null);
   
   // Используем хук только для обычных квестов
   const { data: quest, isLoading, error } = useQuest(isTrialQuest ? '' : questId);
@@ -68,8 +74,8 @@ export default function QuestPage() {
   const displayQuest = isTrialQuest ? trialQuestData : quest;
   const loading = isTrialQuest ? !trialQuestData : isLoading;
   
-  // Если данные квеста не содержат задачи, добавляем пустой массив
-  if (displayQuest && !displayQuest.tasks) {
+  // Если в данных квеста нет ни tasks, ни subtasks, добавляем пустой массив tasks
+  if (displayQuest && !displayQuest.tasks && !displayQuest.subtasks) {
     displayQuest.tasks = [];
   }
 
@@ -118,14 +124,14 @@ export default function QuestPage() {
   const tasks = displayQuest?.tasks || displayQuest?.subtasks || [];
   
   // Расчет общего прогресса квеста
-  const completedTasks = tasks.filter((task: any) => task.completed).length || 0;
+  const completedTasks = tasks.filter((task: {completed?: boolean}) => task.completed).length || 0;
   const totalTasks = tasks.length || 0;
   const questProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
   
   // Добавляем проверку и отладочную информацию
-  console.log('Данные квеста:', displayQuest);
-  console.log('Задачи квеста:', tasks);
-  console.log('Количество задач:', totalTasks);
+  console.warn('Данные квеста:', displayQuest);
+  console.warn('Задачи квеста:', tasks);
+  console.warn('Количество задач:', totalTasks);
   
   return (
     <div className="min-h-screen bg-[#F7F9FB] flex flex-col">

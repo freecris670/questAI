@@ -23,6 +23,40 @@ export class OpenAiService implements OnModuleInit {
   get client(): OpenAI {
     return this.openaiClient;
   }
+  
+  /**
+   * Генерирует контент для квеста на основе промпта
+   * @param prompt Промпт для генерации контента
+   * @returns JSON строка с сгенерированным контентом
+   */
+  async generateQuestContent(prompt: string): Promise<string> {
+    try {
+      const response = await this.openaiClient.chat.completions.create({
+        model: 'gpt-4-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Ты - генератор контента для геймифицированных квестов в стиле MMORPG. Создавай интересные задачи, этапы, достижения и награды, которые мотивируют пользователя выполнять реальные задачи.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        response_format: { type: 'json_object' },
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('Не удалось получить ответ от OpenAI');
+      }
+
+      return content;
+    } catch (error) {
+      console.error('Ошибка при генерации контента:', error);
+      throw new Error('Не удалось сгенерировать контент');
+    }
+  }
 
   /**
    * Генерирует квест на основе заданных параметров

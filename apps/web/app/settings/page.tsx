@@ -68,7 +68,7 @@ export default function SettingsPage() {
   
   const handleSaveSettings = () => {
     // В реальном приложении здесь будет сохранение в базу данных
-    console.log('Сохраняем настройки:', { userData, preferences, integrations, notifications });
+    console.warn('Сохраняем настройки:', { userData, preferences, integrations, notifications });
     // Показываем уведомление об успешном сохранении
     alert('Настройки успешно сохранены');
   };

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { OpenAiService } from '../openai/openai.service';
-import { CreateQuestDto, UpdateQuestDto, GenerateQuestDto, UpdateQuestProgressDto, PublishQuestDto } from './dto';
+import { CreateQuestDto, UpdateQuestDto, GenerateQuestDto, UpdateQuestProgressDto, PublishQuestDto, GenerateContentDto } from './dto';
 import { IQuest, IQuestDetails, IGeneratedQuestData, IQuestProgress } from '../interfaces/quest.interfaces';
 
 @Injectable()
@@ -438,7 +438,7 @@ export class QuestsService {
       .eq('user_id', userId)
       .single();
       
-    return achievements.map((achievement: any) => ({
+    return achievements.map((achievement: { id: string; title: string; description: string; unlocked?: boolean }) => ({
       id: achievement.id,
       title: achievement.title,
       description: achievement.description,
@@ -756,5 +756,104 @@ export class QuestsService {
     const xpNeededForLevel = xpForNextLevel - xpForCurrentLevel;
     
     return Math.round((xpInCurrentLevel / xpNeededForLevel) * 100);
+  }
+
+  /**
+   * Генерация контента для квеста (этапы, задачи, достижения)
+   * @param generateContentDto Параметры для генерации контента
+   * @returns Сгенерированный контент в зависимости от запрошенного типа
+   */
+  async generateContent(generateContentDto: GenerateContentDto) {
+    const { description, title, questType, contentType } = generateContentDto;
+    
+    try {
+      switch (contentType) {
+        case 'stages':
+          return await this.generateStagesContent(description, title, questType);
+        case 'tasks':
+          return await this.generateTasksContent(description, title, questType);
+        case 'achievements':
+          return await this.generateAchievementsContent(description, title, questType);
+        default:
+          throw new Error(`Неподдерживаемый тип контента: ${contentType}`);
+      }
+    } catch (error) {
+      console.error(`Ошибка при генерации контента типа ${contentType}:`, error);
+      // Правильная обработка ошибки с проверкой типа
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      throw new Error(`Не удалось сгенерировать контент: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Генерация этапов квеста
+   * @private
+   */
+  private async generateStagesContent(description: string, title: string, questType: string) {
+    // Формируем промпт для OpenAI
+    const prompt = `Создай 3-5 этапов для квеста "${title}" с описанием "${description}".
+      Тип квеста: ${questType}.
+      Каждый этап должен иметь название, описание и список из 2-3 задач.
+      Формат JSON: { stages: [{ title: string, description: string, tasks: [{ title: string, description: string, xp: number }] }] }`;
+    
+    // Вызываем OpenAI для генерации контента
+    const content = await this.openAiService.generateQuestContent(prompt);
+    
+    // Парсим и проверяем результат
+    try {
+      const parsedContent = JSON.parse(content);
+      return parsedContent;
+    } catch (e) {
+      console.error('Ошибка при парсинге сгенерированных этапов:', e, content);
+      throw new Error('Не удалось обработать сгенерированные этапы');
+    }
+  }
+
+  /**
+   * Генерация задач квеста
+   * @private
+   */
+  private async generateTasksContent(description: string, title: string, questType: string) {
+    // Формируем промпт для OpenAI
+    const prompt = `Создай 5-7 задач для квеста "${title}" с описанием "${description}".
+      Тип квеста: ${questType}.
+      Каждая задача должна иметь название, описание и количество опыта (XP) за выполнение.
+      Формат JSON: { tasks: [{ title: string, description: string, xp: number }] }`;
+    
+    // Вызываем OpenAI для генерации контента
+    const content = await this.openAiService.generateQuestContent(prompt);
+    
+    // Парсим и проверяем результат
+    try {
+      const parsedContent = JSON.parse(content);
+      return parsedContent;
+    } catch (e) {
+      console.error('Ошибка при парсинге сгенерированных задач:', e, content);
+      throw new Error('Не удалось обработать сгенерированные задачи');
+    }
+  }
+
+  /**
+   * Генерация достижений квеста
+   * @private
+   */
+  private async generateAchievementsContent(description: string, title: string, questType: string) {
+    // Формируем промпт для OpenAI
+    const prompt = `Создай 3-5 достижений для квеста "${title}" с описанием "${description}".
+      Тип квеста: ${questType}.
+      Каждое достижение должно иметь название, описание, условие получения и награду (XP).
+      Формат JSON: { achievements: [{ title: string, description: string, condition: string, xp: number }] }`;
+    
+    // Вызываем OpenAI для генерации контента
+    const content = await this.openAiService.generateQuestContent(prompt);
+    
+    // Парсим и проверяем результат
+    try {
+      const parsedContent = JSON.parse(content);
+      return parsedContent;
+    } catch (e) {
+      console.error('Ошибка при парсинге сгенерированных достижений:', e, content);
+      throw new Error('Не удалось обработать сгенерированные достижения');
+    }
   }
 }

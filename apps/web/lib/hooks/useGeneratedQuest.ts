@@ -4,15 +4,15 @@ import { useGenerateQuest, useCreateQuest } from '@/lib/hooks/useQuests';
 
 interface UseGeneratedQuestOptions {
   initialData?: IGeneratedQuestData | null;
-  onStartCallback?: (questData: IGeneratedQuestData) => void;
-  onShareCallback?: (questData: IGeneratedQuestData) => void;
+  onStartCallback?: (_questData: IGeneratedQuestData) => void;
+  onShareCallback?: (_questData: IGeneratedQuestData) => void;
 }
 
 interface UseGeneratedQuestResult {
   questData: IGeneratedQuestData | null;
   isLoading: boolean;
   error: Error | null;
-  generateNewQuest: (params?: {
+  generateNewQuest: (_params?: {
     theme?: string;
     difficulty?: 'easy' | 'medium' | 'hard';
     additionalDetails?: string;
@@ -41,7 +41,7 @@ export function useGeneratedQuest({
   const createQuestMutation = useCreateQuest();
 
   // Функция для генерации нового квеста
-  const generateNewQuest = useCallback(async (params?: {
+  const generateNewQuest = useCallback(async (_params?: {
     theme?: string;
     difficulty?: 'easy' | 'medium' | 'hard';
     additionalDetails?: string;
@@ -51,9 +51,9 @@ export function useGeneratedQuest({
 
     try {
       const finalParams = {
-        theme: params?.theme ?? 'Random',
-        difficulty: params?.difficulty ?? 'easy',
-        ...(params?.additionalDetails ? { additionalDetails: params.additionalDetails } : {})
+        theme: _params?.theme ?? 'Random',
+        difficulty: _params?.difficulty ?? 'easy',
+        ...(_params?.additionalDetails ? { additionalDetails: _params.additionalDetails } : {})
       };
 
       const newQuestData = await generateQuestMutation.mutateAsync(finalParams);
@@ -90,7 +90,7 @@ export function useGeneratedQuest({
   const shareQuest = useCallback(() => {
     if (!questData) return;
     
-    console.log('Шеринг квеста:', questData.title);
+    console.warn('Шеринг квеста:', questData.title);
     
     // Вызываем колбэк, если он был передан
     if (onShareCallback) {

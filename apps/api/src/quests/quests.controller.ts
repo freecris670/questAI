@@ -3,7 +3,7 @@ import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { QuestsService } from './quests.service';
-import { CreateQuestDto, GenerateQuestDto, UpdateQuestDto, UpdateQuestProgressDto, PublishQuestDto } from './dto';
+import { CreateQuestDto, GenerateQuestDto, UpdateQuestDto, UpdateQuestProgressDto, PublishQuestDto, GenerateContentDto } from './dto';
 import { IQuest, IQuestDetails, IGeneratedQuestData, IQuestProgress } from '../interfaces/quest.interfaces';
 import { SupabaseAuthGuard, User } from '../supabase/supabase.module';
 
@@ -216,5 +216,12 @@ export class QuestsController {
     // Используем фолбэк для локальной разработки
     const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
     return { questsCreated: await this.questsService.incrementTrialQuestsCount(ipAddress as string || remoteAddress) };
+  }
+  
+  @Post('generate-content')
+  @ApiOperation({ summary: 'Генерация контента для квеста (этапы, задачи, достижения)' })
+  @Throttle({ short: { ttl: 60000, limit: 5 } }) // 5 запросов в минуту
+  async generateContent(@Body() generateContentDto: GenerateContentDto) {
+    return this.questsService.generateContent(generateContentDto);
   }
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
 // Маршруты, требующие авторизации
 const PROTECTED_ROUTES = [
@@ -45,14 +44,14 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
             request,
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+          cookiesToSet.forEach(({ name, value }) =>
+            supabaseResponse.cookies.set(name, value)
           );
         },
       },
@@ -108,21 +107,4 @@ export const config = {
   ],
 };
 
-// Типы для базы данных
-interface Database {
-  public: {
-    Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          avatar_url: string | null;
-          character_name: string | null;
-          preferences: Record<string, any> | null;
-          completed_onboarding: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-      };
-    };
-  };
-}
+// (Removed unused Database interface to comply with eslint rules.)

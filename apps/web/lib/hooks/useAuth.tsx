@@ -98,11 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Методы для работы с аутентификацией
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (_email: string, _password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: _email,
+        password: _password,
       });
       
       return { error };
@@ -112,11 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (_email: string, _password: string) => {
     try {
       const { error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: _email,
+        password: _password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -143,9 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (_email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(_email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
       
