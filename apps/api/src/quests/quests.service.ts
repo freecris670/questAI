@@ -177,6 +177,169 @@ export class QuestsService {
   }
 
   /**
+   * Создание пробного квеста для неавторизованного пользователя
+   * @param questData Данные квеста
+   */
+  async createTrialQuest(questData: any): Promise<any> {
+    try {
+      // Генерируем полный квест с помощью OpenAI в одном запросе
+      const prompt = `Создай геймифицированный квест на основе следующего описания: "${questData.description}". 
+Ответ должен быть в формате JSON со следующими полями:
+- title: краткое и интересное название квеста (5-7 слов)
+- description: краткое описание квеста (2-3 предложения)
+- questType: тип квеста (один из: adventure, challenge, learning, personal_growth)
+- difficulty: сложность квеста (один из: easy, normal, hard)
+- tasks: массив задач квеста, каждая с полями title, description и xp (очки опыта)
+- rewards: объект с полями xp (общее количество очков опыта) и itemName (название награды)
+Создай увлекательный и мотивирующий квест с 4-6 задачами.`;
+
+      // Запрашиваем генерацию квеста у OpenAI
+      const response = await this.openAiService.generateQuestContent(prompt);
+      
+      let questContent;
+      try {
+        // Парсим JSON ответ
+        questContent = JSON.parse(response);
+      } catch (e) {
+        console.error('Ошибка при парсинге JSON ответа от OpenAI:', e, 'Ответ:', response);
+        questContent = {
+          title: 'Новый квест',
+          description: questData.description || '',
+          questType: 'adventure',
+          difficulty: 'normal',
+          tasks: [],
+          rewards: { xp: 100, itemName: 'Награда за квест' }
+        };
+      }
+      
+      // Преобразуем названия полей в snake_case для БД
+      const dbQuestData = {
+        title: questContent.title || 'Новый квест',
+        description: questContent.description || questData.description || '',
+        content: {
+          questType: questContent.questType || 'adventure',
+          difficulty: questContent.difficulty || 'normal',
+          tasks: questContent.tasks || [],
+          rewards: questContent.rewards || { xp: 100, itemName: 'Награда за квест' }
+        },
+        ip_address: questData.ip_address,
+        created_at: new Date().toISOString(),
+        original_request: questData.description
+      };
+      
+      // Сохраняем данные в таблицу trial_quests
+      const { data, error } = await this.supabaseService.client
+        .from('trial_quests')
+        .insert(dbQuestData)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Ошибка при создании пробного квеста: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Ошибка при создании пробного квеста:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение пробного квеста по ID
+   * @param id ID пробного квеста
+   */
+  async getTrialQuest(id: string): Promise<any> {
+    try {
+      const { data, error } = await this.supabaseService.client
+        .from('trial_quests')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        throw new Error(`Пробный квест не найден: ${error.message}`);
+      }
+
+      // Преобразуем данные в формат, ожидаемый фронтендом
+      return {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        questType: data.content?.questType || 'adventure',
+        difficulty: data.content?.difficulty || 'medium',
+        tasks: data.content?.tasks || [],
+        rewards: data.content?.rewards || {
+          xp: 100,
+          itemName: 'Награда за квест'
+        },
+        created_at: data.created_at
+      };
+    } catch (error) {
+      console.error('Ошибка при получении пробного квеста:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Миграция пробных квестов при авторизации пользователя
+   * @param ipAddress IP-адрес неавторизованного пользователя
+   * @param userId ID авторизованного пользователя
+   */
+  async migrateTrialQuests(ipAddress: string, userId: string): Promise<{ migrated: number }> {
+    // Получаем все пробные квесты для данного IP-адреса
+    const { data: trialQuests, error } = await this.supabaseService.client
+      .from('trial_quests')
+      .select('*')
+      .eq('ip_address', ipAddress);
+
+    if (error) {
+      throw new Error(`Ошибка при получении пробных квестов: ${error.message}`);
+    }
+
+    // Если нет пробных квестов, возвращаем 0
+    if (!trialQuests || trialQuests.length === 0) {
+      return { migrated: 0 };
+    }
+
+    // Преобразуем пробные квесты в формат для вставки в основную таблицу
+    const questsToInsert = trialQuests.map(quest => {
+      return {
+        title: quest.title || 'Новый квест',
+        description: quest.description || '',
+        content: quest.content || {},
+        user_id: userId,
+        is_public: false,
+        created_at: quest.created_at,
+        original_request: quest.original_request
+      };
+    });
+
+    // Вставляем квесты в основную таблицу
+    const { data: insertedQuests, error: insertError } = await this.supabaseService.client
+      .from('quests')
+      .insert(questsToInsert)
+      .select();
+
+    if (insertError) {
+      throw new Error(`Ошибка при миграции пробных квестов: ${insertError.message}`);
+    }
+
+    // Удаляем пробные квесты после успешной миграции
+    const { error: deleteError } = await this.supabaseService.client
+      .from('trial_quests')
+      .delete()
+      .eq('ip_address', ipAddress);
+
+    if (deleteError) {
+      console.error(`Ошибка при удалении пробных квестов: ${deleteError.message}`);
+      // Не выбрасываем ошибку, так как квесты уже мигрированы
+    }
+
+    return { migrated: trialQuests.length };
+  }
+
+  /**
    * Запуск периодической очистки устаревших запросов на генерацию
    * @private
    */
@@ -410,27 +573,26 @@ export class QuestsService {
       // Параметры для генерации квеста
       const { theme, difficulty, length, additionalDetails } = params;
   
-      // Генерируем квест с помощью OpenAI
-      const questContent = await this.openAiService.generateQuest({
-        theme,
-        complexity: difficulty,
-        length
+      // Создаем и сохраняем пробный квест в базу данных
+      const createdQuest = await this.createTrialQuest({
+        description: theme,
+        ip_address: ipAddress,
+        difficulty,
+        length,
+        additionalDetails
       });
-  
-      // Создаем временный ID для пробного квеста
-      const trialQuestId = `trial_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
       // Преобразуем данные в формат IGeneratedQuestData
-      const result = {
-        id: trialQuestId,
-        title: questContent.title,
-        description: questContent.description,
-        questType: questContent.questType || 'adventure',
-        difficulty: difficulty,
-        tasks: questContent.tasks || [],
-        rewards: {
-          xp: questContent.rewards?.xp || 100,
-          itemName: questContent.rewards?.itemName || 'Награда за квест'
+      const result: IGeneratedQuestData = {
+        id: createdQuest.id,
+        title: createdQuest.title,
+        description: createdQuest.description,
+        questType: createdQuest.content?.questType || 'adventure',
+        difficulty: createdQuest.content?.difficulty || difficulty,
+        tasks: createdQuest.content?.tasks || [],
+        rewards: createdQuest.content?.rewards || {
+          xp: 100,
+          itemName: 'Награда за квест'
         }
       };
       

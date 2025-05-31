@@ -49,6 +49,20 @@ export function useQuest(id: string) {
   return useQuery({
     queryKey: ['quest', id],
     queryFn: async () => {
+      // Определяем эндпоинт в зависимости от типа квеста
+      // Для trial квестов ID может начинаться с 'trial_', но в API мы передаем только ID без префикса
+      let endpoint;
+      let questId = id;
+      
+      if (id.startsWith('trial_')) {
+        // Для trial квестов используем специальный эндпоинт и убираем префикс 'trial_'
+        endpoint = `quests/trial/${id.substring(6)}`;
+      } else {
+        endpoint = `quests/${id}`;
+      }
+      
+      console.log('Запрос квеста по эндпоинту:', endpoint);
+      
       // Получаем токен авторизации из Supabase
       const { supabase } = await import('@/lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
@@ -62,13 +76,15 @@ export function useQuest(id: string) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
       
-      const response = await fetch(getApiUrl(`quests/${id}`), {
+      const response = await fetch(getApiUrl(endpoint), {
         headers,
         credentials: 'include'
       });
       
       if (!response.ok) {
-        throw new Error('Ошибка при получении квеста');
+        const errorText = await response.text();
+        console.error('Ошибка при получении квеста:', errorText);
+        throw new Error(`Ошибка при получении квеста: ${response.status} ${response.statusText}`);
       }
       
       return response.json();
@@ -127,37 +143,29 @@ export function useGenerateQuest() {
     mutationFn: async (params: {
       theme: string;
       difficulty: 'easy' | 'medium' | 'hard';
-      length?: 'short' | 'medium' | 'long'; // Добавлено поле длины квеста
-      userId?: string;                     // Добавлено поле ID пользователя
+      length?: 'short' | 'medium' | 'long';
+      userId?: string;
       additionalDetails?: string;
-      isTrial?: boolean;
     }) => {
       try {
-        console.warn('Начинаем процесс генерации квеста с параметрами:', params);
-        
-        // Используем разные эндпоинты для авторизованных и неавторизованных пользователей
-        const endpoint = params.isTrial ? 'quests/generate/trial' : 'quests/generate';
-        console.warn('Выбран эндпоинт:', endpoint);
-        
-        // Убедимся, что все обязательные поля присутствуют
+        // Подготавливаем данные для запроса
         const requestData = {
           theme: params.theme,
           difficulty: params.difficulty,
-          length: params.length || 'medium',      // Значение по умолчанию 'medium'
-          userId: params.userId || 'anonymous',  // Значение по умолчанию 'anonymous'
-          additionalDetails: params.additionalDetails || params.theme // Используем тему как дополнительную информацию если она не указана
+          length: params.length || 'medium',
+          additionalDetails: params.additionalDetails || params.theme,
+          userId: params.userId || 'anonymous' // Всегда передаем userId
         };
 
-        console.warn('Подготовлены данные для запроса:', requestData);
+        console.log('Подготовлены данные для запроса:', requestData);
         
         // Получаем токен авторизации из Supabase
-        console.warn('Получаем сессию из Supabase...');
         const { supabase } = await import('@/lib/supabase');
         const { data: sessionData } = await supabase.auth.getSession();
         const session = sessionData?.session;
         const authToken = session?.access_token;
         
-        console.warn('Статус авторизации:', authToken ? 'Авторизован' : 'Не авторизован');
+        console.log('Статус авторизации:', authToken ? 'Авторизован' : 'Не авторизован');
         
         // Формируем заголовки запроса
         const headers: HeadersInit = {
@@ -165,16 +173,13 @@ export function useGenerateQuest() {
         };
         
         // Добавляем заголовок авторизации, если есть токен
-        if (authToken && !params.isTrial) {
-          console.warn('Добавляем токен авторизации в заголовки');
+        if (authToken) {
           headers['Authorization'] = `Bearer ${authToken}`;
         }
         
-        // Для триальных квестов используем специальный эндпоинт
-        const apiUrl = getApiUrl(endpoint);
-        console.warn('Отправляем запрос на URL:', apiUrl);
-        
-        console.warn('Заголовки запроса:', headers);
+        // Используем единый эндпоинт для всех квестов
+        const apiUrl = getApiUrl('quests/generate');
+        console.log('Отправляем запрос на URL:', apiUrl);
         
         // Устанавливаем таймаут для запроса
         const controller = new AbortController();
@@ -193,7 +198,13 @@ export function useGenerateQuest() {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Ошибка API при генерации квеста:', errorText);
-          throw new Error(`Ошибка при генерации квеста: ${response.status} ${errorText}`);
+          
+          // Проверяем на лимиты
+          if (response.status === 429 || errorText.includes('лимит')) {
+            throw new Error('Превышен лимит создания квестов');
+          }
+          
+          throw new Error(`Ошибка при генерации квеста: ${response.status}`);
         }
         
         return response.json();

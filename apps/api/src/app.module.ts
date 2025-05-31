@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { OpenAiModule } from './openai/openai.module';
 import { ThrottlerConfigModule } from './throttler/throttler.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ThrottlerConfigModule } from './throttler/throttler.module';
     QuestsModule,
     UsersModule,
     OpenAiModule,
+    AuthModule, // Добавляем модуль авторизации
   ],
   controllers: [AppController],
   providers: [AppService],

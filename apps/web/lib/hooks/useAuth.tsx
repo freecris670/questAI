@@ -2,6 +2,7 @@ import { useRouter } from 'next/navigation';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import axios from 'axios';
 
 interface UserProfile {
   id: string;
@@ -100,12 +101,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Методы для работы с аутентификацией
   const signIn = async (_email: string, _password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Используем наш API-эндпоинт вместо прямого вызова Supabase
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
         email: _email,
-        password: _password,
+        password: _password
+      }, {
+        withCredentials: true
       });
       
-      return { error };
+      if (response.data && response.data.token) {
+        // Успешный вход, обновляем сессию вручную
+        const { data: authData } = await supabase.auth.setSession({
+          access_token: response.data.token,
+          refresh_token: ''
+        });
+        
+        // Обновляем состояние
+        setSession(authData.session);
+        setUser(authData.session?.user ?? null);
+        
+        if (authData.session?.user) {
+          await fetchUserProfile(authData.session.user.id);
+        }
+        
+        // Дополнительно запускаем миграцию пробных квестов
+        if (authData.session) {
+          try {
+            await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/users/migrate-trial-quests`, {}, {
+              headers: {
+                Authorization: `Bearer ${response.data.token}`
+              },
+              withCredentials: true
+            });
+          } catch (migrateError) {
+            console.error('Ошибка при миграции пробных квестов:', migrateError);
+            // Не выбрасываем ошибку, чтобы не блокировать авторизацию
+          }
+        }
+        
+        return { error: null };
+      }
+      
+      return { error: new Error('Неверный ответ от сервера') };
     } catch (error) {
       console.error('Ошибка входа:', error);
       return { error: error as Error };
@@ -114,15 +151,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (_email: string, _password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      // Используем наш API-эндпоинт для регистрации
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
         email: _email,
         password: _password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        name: _email.split('@')[0] // временно используем часть email как имя
+      }, {
+        withCredentials: true
       });
       
-      return { error };
+      if (response.data && response.data.token) {
+        // Успешная регистрация, обновляем сессию вручную
+        const { data: authData } = await supabase.auth.setSession({
+          access_token: response.data.token,
+          refresh_token: ''
+        });
+        
+        // Обновляем состояние
+        setSession(authData.session);
+        setUser(authData.session?.user ?? null);
+        
+        if (authData.session?.user) {
+          await fetchUserProfile(authData.session.user.id);
+        }
+        
+        // Дополнительно запускаем миграцию пробных квестов
+        if (authData.session) {
+          try {
+            await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/users/migrate-trial-quests`, {}, {
+              headers: {
+                Authorization: `Bearer ${response.data.token}`
+              },
+              withCredentials: true
+            });
+          } catch (migrateError) {
+            console.error('Ошибка при миграции пробных квестов:', migrateError);
+            // Не выбрасываем ошибку, чтобы не блокировать регистрацию
+          }
+        }
+        
+        return { error: null };
+      }
+      
+      return { error: new Error('Неверный ответ от сервера') };
     } catch (error) {
       console.error('Ошибка регистрации:', error);
       return { error: error as Error };
@@ -130,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Выход через Supabase пока оставляем, т.к. он очищает локальные данные о сессии
     await supabase.auth.signOut();
     router.push('/');
   };

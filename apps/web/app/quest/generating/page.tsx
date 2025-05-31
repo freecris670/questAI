@@ -32,42 +32,9 @@ export default function GeneratingQuestPage() {
   const generateQuest = useGenerateQuest();
 
   useEffect(() => {
-    // Функция для проверки, был ли уже запущен процесс генерации
-    const checkIfGenerationStarted = () => {
-      // Создаем уникальный идентификатор для текущего запроса генерации
-      const requestId = `generation_${description.substring(0, 20).replace(/\s+/g, '_')}_${Date.now()}`;
-      
-      // Проверяем, был ли уже запущен процесс генерации с таким же описанием
-      const inProgressId = localStorage.getItem('quest_generation_in_progress');
-      
-      // Если процесс уже запущен и это не текущий запрос - прерываем
-      if (inProgressId && inProgressId !== requestId) {
-        console.warn('Процесс генерации уже запущен с ID:', inProgressId);
-        return { alreadyStarted: true, requestId };
-      }
-      
-      // Записываем текущий ID генерации
-      localStorage.setItem('quest_generation_in_progress', requestId);
-      setGenerationId(requestId);
-      return { alreadyStarted: false, requestId };
-    };
-    
-    // Запускаем генерацию квеста при загрузке страницы
-    const generationStartedRef = { current: false };
-    
     const startGeneration = async () => {
-      // Предотвращаем повторный запуск в одном и том же рендере
-      if (!description || isGenerating || generationStartedRef.current) return;
-      
-      // Помечаем, что генерация запущена для текущего рендера
-      generationStartedRef.current = true;
-      
-      // Проверяем, не запущен ли уже процесс генерации
-      const { alreadyStarted, requestId } = checkIfGenerationStarted();
-      if (alreadyStarted) {
-        console.warn('Пропускаем повторный запуск генерации квеста');
-        return;
-      }
+      // Предотвращаем повторный запуск
+      if (!description || isGenerating) return;
       
       setIsGenerating(true);
       
@@ -75,13 +42,10 @@ export default function GeneratingQuestPage() {
       const timeoutId = setTimeout(() => {
         console.error('Превышено время ожидания генерации квеста (60 секунд)');
         setIsGenerating(false);
-        localStorage.removeItem('quest_generation_in_progress');
         router.push('/?error=generation_timeout');
-      }, 60000); // 60 секунд таймаут
+      }, 60000);
       
       try {
-        console.warn('Начинаем генерацию квеста с описанием:', description);
-        
         // Проверяем длину описания
         if (description.length > 1500) {
           console.warn('Слишком длинное описание квеста:', description.length, 'символов');
@@ -91,7 +55,7 @@ export default function GeneratingQuestPage() {
           return;
         }
         
-        // Определяем сложность на основе описания (простая логика)
+        // Определяем сложность на основе описания
         let difficulty: 'easy' | 'medium' | 'hard' = 'medium';
         const lowerDesc = description.toLowerCase();
         if (lowerDesc.includes('легк') || lowerDesc.includes('прост') || lowerDesc.includes('начина')) {
@@ -100,80 +64,53 @@ export default function GeneratingQuestPage() {
           difficulty = 'hard';
         }
         
-        console.warn('Определена сложность квеста:', difficulty);
+        console.log('Определена сложность квеста:', difficulty);
         
         // Готовим параметры для запроса
         const requestParams = {
           theme: description,
           difficulty,
+          length: 'medium' as const,
           additionalDetails: description,
-          // Добавляем обязательные поля, которые ожидает бэкенд
-          length: 'medium' as 'short' | 'medium' | 'long', // Добавляем поле длины квеста (short, medium, long)
-          userId: user?.id || 'anonymous', // Добавляем ID пользователя или anonymous для неавторизованных
-          isTrial: !user // Если пользователь не авторизован, используем пробный режим
+          userId: user?.id || 'anonymous' // Используем ID пользователя или 'anonymous'
         };
         
-        console.warn('Отправляем запрос на генерацию с параметрами:', requestParams);
+        console.log('Отправляем запрос на генерацию с параметрами:', requestParams);
         
-        // Генерируем квест (используем пробный режим для неавторизованных)
+        // Генерируем квест
         const questData = await generateQuest.mutateAsync(requestParams);
         
-        // Очищаем таймаут после получения ответа
+        console.log('Квест успешно сгенерирован:', questData);
+        
+        // Очищаем таймаут
         clearTimeout(timeoutId);
         
-        // Очищаем статус генерации в localStorage
-        localStorage.removeItem('quest_generation_in_progress');
+        // Устанавливаем прогресс на 100%
+        setProgress(100);
         
-        console.warn('Получены данные квеста:', questData);
-        
-        // Если это пробный квест, сохраняем его в localStorage
-        if (!user && questData && questData.id && questData.id.startsWith('trial_')) {
-          localStorage.setItem(`quest_${questData.id}`, JSON.stringify(questData));
-          console.warn('Сохранен пробный квест в localStorage:', questData.id);
-        }
-        
-        // После успешной генерации перенаправляем на страницу квеста
-        if (questData && questData.id) {
-          // Перенаправляем на страницу квеста
+        // Небольшая задержка для показа завершения
+        setTimeout(() => {
+          // Переходим на страницу квеста
           router.push(`/quest/${questData.id}`);
-          console.warn('Перенаправление на страницу квеста:', `/quest/${questData.id}`);
-        } else {
-          console.error('Не удалось получить ID квеста');
-          router.push('/?error=generation_failed');
-        }
-      } catch (error) {
-        // Очищаем таймаут в случае ошибки
+        }, 500);
+        
+      } catch (error: any) {
         clearTimeout(timeoutId);
+        console.error('Ошибка при генерации квеста:', error);
+        setIsGenerating(false);
         
-        // Очищаем статус генерации в localStorage
-        localStorage.removeItem('quest_generation_in_progress');
-        
-        // Улучшенная обработка ошибок
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('Ошибка при генерации квеста:', errorMessage);
-        
-        // Анализируем ошибку для более точного сообщения пользователю
-        if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
-          console.error('Ошибка авторизации при генерации квеста');
-          router.push('/?error=authorization_failed');
-        } else if (errorMessage.includes('timeout') || errorMessage.includes('abort')) {
-          console.error('Превышено время ожидания ответа от сервера');
-          router.push('/?error=server_timeout');
+        // Обработка различных типов ошибок
+        if (error.message?.includes('лимит')) {
+          router.push('/?error=limit_exceeded');
         } else {
           router.push('/?error=generation_failed');
         }
-        
-        setIsGenerating(false);
       }
     };
     
     startGeneration();
-    
-    // Функция очистки для useEffect
-    return () => {
-      generationStartedRef.current = true; // Предотвращаем запуск после размонтирования
-    };
-  }, [description, generateQuest, router, isGenerating, user]);
+  }, [description, user, generateQuest, router]);
+
   // Анимация прогресс-бара
   useEffect(() => {
     const progressInterval = setInterval(() => {

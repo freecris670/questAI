@@ -1,14 +1,19 @@
-import { Controller, Get, Put, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { Request } from 'express';
 import { UsersService } from './users.service';
 import { UserProfileDto, UserStatsDto } from './dto';
 import { IQuest } from '../interfaces/quest.interfaces';
 import { SupabaseAuthGuard, User } from '../supabase/supabase.module';
+import { QuestsService } from '../quests/quests.service';
 
 @ApiTags('Пользователи')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {/* Сервис используется в методах */}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly questsService: QuestsService,
+  ) {/* Сервисы используются в методах */}
 
   @Get(':id/profile')
   @ApiOperation({ summary: 'Получить профиль пользователя' })
@@ -73,5 +78,26 @@ export class UsersController {
   @UseGuards(SupabaseAuthGuard)
   async getActiveQuests(@User('id') userId: string) {
     return this.usersService.getActiveQuests(userId);
+  }
+  
+  @Post('migrate-trial-quests')
+  @ApiOperation({ summary: 'Миграция пробных квестов при авторизации пользователя' })
+  @ApiResponse({ status: 200, description: 'Информация о мигрированных квестах' })
+  @ApiBearerAuth()
+  @UseGuards(SupabaseAuthGuard)
+  async migrateTrialQuests(
+    @User('id') userId: string,
+    @Req() request: Request
+  ) {
+    // Получаем IP-адрес из заголовков
+    let ipAddress = request.headers['x-forwarded-for'];
+    if (Array.isArray(ipAddress)) {
+      ipAddress = ipAddress[0];
+    }
+    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
+    const ip = ipAddress as string || remoteAddress;
+    
+    // Вызываем метод миграции пробных квестов
+    return this.questsService.migrateTrialQuests(ip, userId);
   }
 }

@@ -7,8 +7,8 @@ export class CreateQuestDto {
     example: 'Приключение в мире кода'
   })
   @IsString()
-  @IsNotEmpty()
-  title!: string;
+  @IsOptional() // Поле title делаем опциональным для пробных квестов
+  title?: string;
 
   @ApiPropertyOptional({
     description: 'Описание квеста',
@@ -33,11 +33,20 @@ export class CreateQuestDto {
   @IsOptional()
   isPublic?: boolean;
   
-  @ApiProperty({
-    description: 'ID пользователя, создавшего квест',
+  @ApiPropertyOptional({
+    description: 'ID пользователя, создавшего квест (опционально для пробных квестов)',
     example: '123e4567-e89b-12d3-a456-426614174000'
   })
   @IsString()
-  @IsNotEmpty()
-  user_id!: string;
+  @IsOptional()
+  user_id?: string;
+  
+  @ApiPropertyOptional({
+    description: 'Флаг, указывающий что квест создан неавторизованным пользователем',
+    default: false,
+    example: true
+  })
+  @IsBoolean()
+  @IsOptional()
+  trial_user?: boolean;
 }

@@ -47,39 +47,15 @@ export default function QuestPage() {
   const { user } = useAuth();
   const questId = params.id as string;
   
-  // Проверяем, является ли это пробным квестом
-  const isTrialQuest = questId.startsWith('trial_');
-  // Define a proper type for quest data
-  type QuestData = {
-    tasks?: {id: string; title: string; description: string; xp: number; completed?: boolean}[];
-    subtasks?: {id: string; title: string; description: string; xp: number; completed?: boolean}[];
-    [key: string]: unknown;
-  };
-  const [trialQuestData, setTrialQuestData] = useState<QuestData | null>(null);
-  
-  // Используем хук только для обычных квестов
-  const { data: quest, isLoading, error } = useQuest(isTrialQuest ? '' : questId);
+  // Используем хук для загрузки квеста (он автоматически определит trial или обычный)
+  const { data: quest, isLoading, error } = useQuest(questId);
 
-  useEffect(() => {
-    // Для пробных квестов загружаем данные из localStorage
-    if (isTrialQuest) {
-      const storedQuest = localStorage.getItem(`quest_${questId}`);
-      if (storedQuest) {
-        setTrialQuestData(JSON.parse(storedQuest));
-      }
-    }
-  }, [questId, isTrialQuest]);
-
-  // Определяем данные для отображения
-  const displayQuest = isTrialQuest ? trialQuestData : quest;
-  const loading = isTrialQuest ? !trialQuestData : isLoading;
-  
   // Если в данных квеста нет ни tasks, ни subtasks, добавляем пустой массив tasks
-  if (displayQuest && !displayQuest.tasks && !displayQuest.subtasks) {
-    displayQuest.tasks = [];
+  if (quest && !quest.tasks && !quest.subtasks) {
+    quest.tasks = [];
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center">
         <Spinner className="w-12 h-12 text-[#2553A1]" />
@@ -87,7 +63,7 @@ export default function QuestPage() {
     );
   }
 
-  if ((error || !displayQuest) && !isTrialQuest) {
+  if (error || !quest) {
     return (
       <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center">
         <div className="text-center">
@@ -102,34 +78,16 @@ export default function QuestPage() {
     );
   }
 
-  if (isTrialQuest && !displayQuest) {
-    return (
-      <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-            Пробный квест не найден
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Возможно, квест был создан в другом браузере или данные были очищены.
-          </p>
-          <Button onClick={() => router.push('/')} variant="outline">
-            Создать новый квест
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // Вычисляем прогресс квеста
+  const tasks = quest.tasks || quest.subtasks || [];
+  const completedTasks = tasks.filter((task: any) => task.completed).length;
+  const totalTasks = tasks.length;
+  const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  const totalXP = tasks.reduce((sum: number, task: any) => sum + (task.xp || 0), 0);
+  const earnedXP = tasks.filter((task: any) => task.completed).reduce((sum: number, task: any) => sum + (task.xp || 0), 0);
 
-  // Добавляем задачи из разных источников данных
-  const tasks = displayQuest?.tasks || displayQuest?.subtasks || [];
-  
-  // Расчет общего прогресса квеста
-  const completedTasks = tasks.filter((task: {completed?: boolean}) => task.completed).length || 0;
-  const totalTasks = tasks.length || 0;
-  const questProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-  
   // Добавляем проверку и отладочную информацию
-  console.warn('Данные квеста:', displayQuest);
+  console.warn('Данные квеста:', quest);
   console.warn('Задачи квеста:', tasks);
   console.warn('Количество задач:', totalTasks);
   
@@ -149,7 +107,7 @@ export default function QuestPage() {
         </div>
         
         {/* Предупреждение для пробного квеста */}
-        {isTrialQuest && !user && (
+        {!user && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Trophy className="w-6 h-6 text-amber-600" />
@@ -179,15 +137,15 @@ export default function QuestPage() {
               </div>
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
-                  {displayQuest.title}
+                  {quest.title}
                 </h1>
                 <div className="flex items-center space-x-3 mt-1">
                   <span className={cn(
                     "px-3 py-1 rounded-full text-sm font-medium border flex items-center space-x-1",
-                    getDifficultyColor(displayQuest.difficulty)
+                    getDifficultyColor(quest.difficulty)
                   )}>
-                    {getDifficultyIcon(displayQuest.difficulty)}
-                    <span>{displayQuest.difficulty || 'Средний'} уровень</span>
+                    {getDifficultyIcon(quest.difficulty)}
+                    <span>{quest.difficulty || 'Средний'} уровень</span>
                   </span>
                 </div>
               </div>
@@ -197,22 +155,22 @@ export default function QuestPage() {
           {/* Контент квеста */}
           <div className="p-6 md:p-8">
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-              {displayQuest.description}
+              {quest.description}
             </p>
             
             {/* Прогресс квеста */}
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 mb-6">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-600">Прогресс квеста</span>
-                <span className="text-sm font-bold text-[#2553A1]">{Math.round(questProgress)}%</span>
+                <span className="text-sm font-bold text-[#2553A1]">{Math.round(progressPercentage)}%</span>
               </div>
-              <Progress value={questProgress} className="h-3" />
+              <Progress value={progressPercentage} className="h-3" />
               <div className="flex justify-between items-center mt-2">
                 <span className="text-xs text-gray-500">
                   {completedTasks} из {totalTasks} заданий выполнено
                 </span>
                 <span className="text-xs text-[#22B07D] font-medium">
-                  +{displayQuest.totalXp || 100} XP
+                  +{totalXP} XP
                 </span>
               </div>
             </div>
@@ -224,7 +182,7 @@ export default function QuestPage() {
                   <Clock className="w-5 h-5" />
                   <span className="font-medium">Время</span>
                 </div>
-                <p className="text-2xl font-bold text-blue-900">{displayQuest.estimatedTime || '30 мин'}</p>
+                <p className="text-2xl font-bold text-blue-900">{quest.estimatedTime || '30 мин'}</p>
               </div>
               
               <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200">
@@ -232,7 +190,7 @@ export default function QuestPage() {
                   <Gem className="w-5 h-5" />
                   <span className="font-medium">Награда</span>
                 </div>
-                <p className="text-2xl font-bold text-emerald-900">{displayQuest.totalXp || 100} XP</p>
+                <p className="text-2xl font-bold text-emerald-900">{totalXP} XP</p>
               </div>
               
               <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
@@ -240,7 +198,7 @@ export default function QuestPage() {
                   <Target className="w-5 h-5" />
                   <span className="font-medium">Задания</span>
                 </div>
-                <p className="text-2xl font-bold text-purple-900">{displayQuest.tasks?.length || 0}</p>
+                <p className="text-2xl font-bold text-purple-900">{totalTasks}</p>
               </div>
               
               <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
@@ -248,7 +206,7 @@ export default function QuestPage() {
                   <Users className="w-5 h-5" />
                   <span className="font-medium">Герои</span>
                 </div>
-                <p className="text-2xl font-bold text-orange-900">{displayQuest.participantsCount || 0}</p>
+                <p className="text-2xl font-bold text-orange-900">{quest.participantsCount || 0}</p>
               </div>
             </div>
             
@@ -301,13 +259,7 @@ export default function QuestPage() {
             </div>
             
             <div className="space-y-4">
-              {tasks.map((task: { 
-                id: string; 
-                title: string; 
-                description: string; 
-                xp: number; 
-                completed?: boolean 
-              }, index: number) => (
+              {tasks.map((task: any, index: number) => (
                 <div 
                   key={task.id || index}
                   className={cn(

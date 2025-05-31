@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, UseGuards, Req, ForbiddenException } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -28,14 +28,54 @@ export class QuestsController {
     return this.questsService.findOne(id);
   }
 
+  @Get('trial/:id')
+  @ApiOperation({ summary: 'Получить пробный квест по ID' })
+  @ApiParam({ name: 'id', description: 'ID пробного квеста' })
+  async getTrialQuest(@Param('id') id: string) {
+    return this.questsService.getTrialQuest(id);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Создать новый квест' })
   @ApiBearerAuth()
-  @UseGuards(SupabaseAuthGuard)
   async create(
     @User('id') userId: string,
-    @Body() createQuestDto: CreateQuestDto
+    @Body() createQuestDto: CreateQuestDto,
+    @Req() request: Request
   ) {
+    // Проверяем, является ли это запросом от неавторизованного пользователя
+    if (createQuestDto.trial_user) {
+      // Запрос от неавторизованного пользователя - создаем trial квест
+      // Получаем IP-адрес для идентификации неавторизованного пользователя
+      let ipAddress = request.headers['x-forwarded-for'];
+      if (Array.isArray(ipAddress)) {
+        ipAddress = ipAddress[0];
+      }
+      const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
+      const ip = ipAddress as string || remoteAddress;
+      
+      // Проверяем, не превышен ли лимит пробных квестов
+      const trialLimits = await this.questsService.checkTrialQuestsLimit(ip);
+      if (!trialLimits.canCreate) {
+        throw new ForbiddenException('Превышен лимит пробных квестов');
+      }
+      
+      // Создаем пробный квест
+      const result = await this.questsService.createTrialQuest({
+        ...createQuestDto,
+        ip_address: ip
+      });
+      
+      // Увеличиваем счетчик пробных квестов
+      await this.questsService.incrementTrialQuestsCount(ip);
+      
+      return result;
+    } else if (!userId) {
+      // Если не указан trial_user и нет userId, значит запрос неавторизованный
+      throw new ForbiddenException('Для создания квеста необходима авторизация');
+    }
+    
+    // Запрос от авторизованного пользователя - создаем обычный квест
     return this.questsService.create({ ...createQuestDto, user_id: userId });
   }
 
@@ -43,11 +83,10 @@ export class QuestsController {
   @ApiOperation({ summary: 'Сгенерировать новый квест с помощью AI' })
   @ApiBearerAuth()
   @Throttle({ short: { ttl: 60000, limit: 3 }, medium: { ttl: 3600000, limit: 20 } }) // 3 запроса в минуту, 20 в час
-  @UseGuards(SupabaseAuthGuard)
   async generate(
-    @User('id') userId: string,
     @Body() generateQuestDto: GenerateQuestDto,
-    @Req() request: Request
+    @Req() request: Request,
+    @User('id') userId?: string
   ): Promise<IGeneratedQuestData> {
     // Получаем IP-адрес для отслеживания лимита
     let ipAddress = request.headers['x-forwarded-for'];
@@ -57,7 +96,7 @@ export class QuestsController {
     const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
     const ip = ipAddress as string || remoteAddress;
     
-    // Проверяем лимиты частоты запросов (даже для авторизованных пользователей)
+    // Проверяем лимиты частоты запросов
     const minuteRateLimit = await this.questsService.checkMinuteRateLimit(ip);
     if (!minuteRateLimit.canCreate) {
       throw new Error('Превышен лимит запросов (3 в минуту). Пожалуйста, подождите.');
@@ -71,48 +110,13 @@ export class QuestsController {
     // Регистрируем попытку создания квеста
     await this.questsService.recordQuestAttempt(ip);
     
-    // Передаем IP-адрес в метод generateQuest для отслеживания дубликатов
+    // Если userId не передан или равен 'anonymous', генерируем пробный квест
+    if (!userId || generateQuestDto.userId === 'anonymous') {
+      return this.questsService.generateTrialQuest(generateQuestDto, ip);
+    }
+    
+    // Иначе генерируем обычный квест для авторизованного пользователя
     return this.questsService.generateQuest(userId, generateQuestDto, ip);
-  }
-
-  @Post('generate/trial')
-  @ApiOperation({ summary: 'Сгенерировать пробный квест без авторизации' })
-  @Throttle({ short: { ttl: 60000, limit: 3 }, medium: { ttl: 3600000, limit: 20 } }) // 3 запроса в минуту, 20 в час
-  async generateTrial(
-    @Body() generateQuestDto: GenerateQuestDto,
-    @Req() request: Request
-  ): Promise<IGeneratedQuestData> {
-    // Получаем IP-адрес для отслеживания лимита
-    let ipAddress = request.headers['x-forwarded-for'];
-    if (Array.isArray(ipAddress)) {
-      ipAddress = ipAddress[0];
-    }
-    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
-    const ip = ipAddress as string || remoteAddress;
-    
-    // Проверяем лимит пробных квестов
-    const { canCreate, questsCreated, maxTrialQuests, reason } = await this.questsService.checkTrialQuestsLimit(ip);
-    if (!canCreate) {
-      const errorMessages = {
-        'max_total_exceeded': `Достигнут лимит пробных квестов (${questsCreated}/${maxTrialQuests})`,
-        'minute_rate_exceeded': 'Превышен лимит запросов (3 в минуту). Пожалуйста, подождите.',
-        'hour_rate_exceeded': 'Превышен лимит запросов (20 в час). Пожалуйста, подождите.'
-      };
-      
-      const errorMessage = reason ? errorMessages[reason] : 'Достигнут лимит запросов';
-      throw new Error(errorMessage);
-    }
-    
-    // Регистрируем попытку создания квеста для отслеживания частоты
-    await this.questsService.recordQuestAttempt(ip);
-    
-    // Генерируем квест для анонимного пользователя
-    const quest = await this.questsService.generateTrialQuest(generateQuestDto, ip);
-    
-    // Увеличиваем счетчик общего количества квестов
-    await this.questsService.incrementTrialQuestsCount(ip);
-    
-    return quest;
   }
 
   @Put(':id/save')
@@ -218,6 +222,7 @@ export class QuestsController {
     const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
     return { questsCreated: await this.questsService.incrementTrialQuestsCount(ipAddress as string || remoteAddress) };
   }
+  
   
   @Post('generate-content')
   @ApiOperation({ summary: 'Генерация контента для квеста (этапы, задачи, достижения)' })

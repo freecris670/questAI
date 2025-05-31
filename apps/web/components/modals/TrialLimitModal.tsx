@@ -5,14 +5,13 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { Trophy, Sparkles, Gift, Crown, Star, Zap, Shield, Gem } from 'lucide-react';
 
-interface TrialLimitModalProps {
+export interface TrialLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  questsCreated?: number; // Количество созданных квестов
-  maxTrialQuests?: number; // Максимальное количество квестов в пробном режиме
+  trialLimitReached?: boolean; // Флаг, указывающий, что лимит пробного доступа превышен
 }
 
-export function TrialLimitModal({ isOpen, onClose, questsCreated = 5 }: TrialLimitModalProps) {
+export function TrialLimitModal({ isOpen, onClose, trialLimitReached = true }: TrialLimitModalProps) {
   const router = useRouter();
 
   const handleRegister = () => {
@@ -37,7 +36,7 @@ export function TrialLimitModal({ isOpen, onClose, questsCreated = 5 }: TrialLim
           </div>
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center text-white">
-              Поздравляем! Вы создали {questsCreated || 5} {questsCreated === 1 ? 'квест' : 'квеста'}!
+              {trialLimitReached ? 'Лимит пробных квестов достигнут!' : 'Поздравляем с освоением QuestAI!'}
             </DialogTitle>
             <DialogDescription className="text-center text-white/90 mt-2">
               Вы отлично освоились с QuestAI! Готовы раскрыть весь потенциал платформы?
