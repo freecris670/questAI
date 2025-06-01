@@ -19,9 +19,10 @@ RUN pnpm install --frozen-lockfile
 COPY apps/api/ ./apps/api/
 COPY tsconfig.base.json ./
 COPY tsconfig.json ./
+COPY turbo.json ./
 
-# Build the application
-RUN cd apps/api && pnpm run build
+# Build only the API application
+RUN pnpm run build:api
 
 # Expose port
 EXPOSE 3001
