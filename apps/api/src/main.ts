@@ -25,7 +25,12 @@ async function bootstrap() {
   
   // Настраиваем CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+      'http://localhost:3000',
+      'https://localhost:3000',
+      /^https:\/\/.*\.railway\.app$/,
+      process.env.FRONTEND_URL
+    ].filter(Boolean),
     credentials: true,
   });
   

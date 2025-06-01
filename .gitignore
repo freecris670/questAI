@@ -50,9 +50,12 @@ coverage
 **/supabase/.branches
 **/supabase/.temp
 
+# Railway
+.railway
+
 # Временные файлы
-.tmp
-.temp
+*.tmp
+*.temp
 
 # Локальные файлы
 *.local
@@ -70,7 +73,6 @@ yarn.lock
 дизайн страниц/
 
 # Специфичные для Next.js
-.vercel
 .next/
 out/
 next-env.d.ts

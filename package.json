@@ -8,6 +8,8 @@
     "build:api": "turbo run build --filter=@questai/api",
     "build:all": "turbo run build",
     "start": "turbo run start",
+    "start:api": "cd apps/api && pnpm run start:prod",
+    "start:web": "cd apps/web && pnpm run start",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint --fix"

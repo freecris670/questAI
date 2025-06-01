@@ -4,7 +4,7 @@ const path = require('path');
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@questai/ui"],
-  // Конфигурация для Vercel
+  // Конфигурация для Railway
   output: 'standalone',
   // Отключаем строгие правила ESLint для сборки
   eslint: {
@@ -25,10 +25,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
-      // Для поддержки развертывания на Vercel
+      // Для поддержки развертывания на Railway
       {
         protocol: 'https',
-        hostname: '*.vercel.app',
+        hostname: '*.railway.app',
       }
     ],
   },
