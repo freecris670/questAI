@@ -2,6 +2,48 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { getApiUrl } from '@/lib/config';
 
 /**
+ * Валидация данных квеста
+ * @param questData Данные квеста с сервера
+ * @returns Валидированные данные квеста
+ */
+function validateQuestData(questData: any): any {
+  if (!questData) return null;
+  
+  // Создаем копию данных для валидации
+  const validatedData = { ...questData };
+  
+  // Проверяем наличие и валидность поля tasks
+  if (!validatedData.tasks || !Array.isArray(validatedData.tasks)) {
+    validatedData.tasks = [];
+  } else {
+    // Проверяем каждую задачу на наличие обязательных полей
+    validatedData.tasks = validatedData.tasks.map((task: any) => ({
+      id: task.id || `task-${Math.random().toString(36).substring(2, 9)}`,
+      title: task.title || 'Задача',
+      description: task.description || '',
+      completed: typeof task.completed === 'boolean' ? task.completed : false,
+      xp: task.xp || 10
+    }));
+  }
+  
+  // Проверяем наличие и валидность поля subtasks
+  if (!validatedData.subtasks || !Array.isArray(validatedData.subtasks)) {
+    validatedData.subtasks = [];
+  } else {
+    // Проверяем каждую подзадачу на наличие обязательных полей
+    validatedData.subtasks = validatedData.subtasks.map((task: any) => ({
+      id: task.id || `subtask-${Math.random().toString(36).substring(2, 9)}`,
+      title: task.title || 'Задача',
+      description: task.description || '',
+      completed: typeof task.completed === 'boolean' ? task.completed : false,
+      xp: task.xp || 5
+    }));
+  }
+  
+  return validatedData;
+}
+
+/**
  * Хук для получения списка квестов
  * @param userId Опциональный ID пользователя для фильтрации
  */
@@ -9,11 +51,6 @@ export function useQuests(userId?: string) {
   return useQuery({
     queryKey: ['quests', { userId }],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (userId) {
-        params.append('userId', userId);
-      }
-      
       // Получаем токен авторизации из Supabase
       const { supabase } = await import('@/lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
@@ -25,6 +62,27 @@ export function useQuests(userId?: string) {
       // Добавляем заголовок авторизации, если есть токен
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      // Если пользователь не авторизован, получаем trial квесты
+      if (!authToken && !userId) {
+        console.log('Получаем trial квесты для неавторизованного пользователя');
+        const response = await fetch(getApiUrl('quests/trial'), {
+          headers,
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Ошибка при получении trial квестов');
+        }
+        
+        return response.json();
+      }
+      
+      // Для авторизованных пользователей получаем обычные квесты
+      const params = new URLSearchParams();
+      if (userId) {
+        params.append('userId', userId);
       }
       
       const response = await fetch(getApiUrl(`quests?${params.toString()}`), {
@@ -49,19 +107,7 @@ export function useQuest(id: string) {
   return useQuery({
     queryKey: ['quest', id],
     queryFn: async () => {
-      // Определяем эндпоинт в зависимости от типа квеста
-      // Для trial квестов ID может начинаться с 'trial_', но в API мы передаем только ID без префикса
-      let endpoint;
-      let questId = id;
-      
-      if (id.startsWith('trial_')) {
-        // Для trial квестов используем специальный эндпоинт и убираем префикс 'trial_'
-        endpoint = `quests/trial/${id.substring(6)}`;
-      } else {
-        endpoint = `quests/${id}`;
-      }
-      
-      console.log('Запрос квеста по эндпоинту:', endpoint);
+      console.log('Запрос квеста с ID:', id);
       
       // Получаем токен авторизации из Supabase
       const { supabase } = await import('@/lib/supabase');
@@ -76,18 +122,50 @@ export function useQuest(id: string) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
       
-      const response = await fetch(getApiUrl(endpoint), {
-        headers,
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
+      // Сначала пытаемся найти квест в основной таблице
+      try {
+        const response = await fetch(getApiUrl(`quests/${id}`), {
+          headers,
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const questData = await response.json();
+          return validateQuestData(questData);
+        }
+        
+        // Если квест не найден в основной таблице (404), пробуем trial таблицу
+        if (response.status === 404) {
+          console.log('Квест не найден в основной таблице, проверяем trial таблицу');
+          
+          const trialResponse = await fetch(getApiUrl(`quests/trial/${id}`), {
+            headers,
+            credentials: 'include'
+          });
+          
+          if (trialResponse.ok) {
+            const questData = await trialResponse.json();
+            return validateQuestData(questData);
+          }
+          
+          // Если не найден и в trial таблице
+          if (trialResponse.status === 404) {
+            throw new Error('Квест не найден');
+          }
+          
+          const errorText = await trialResponse.text();
+          console.error('Ошибка при получении trial квеста:', errorText);
+          throw new Error(`Ошибка при получении квеста: ${trialResponse.status} ${trialResponse.statusText}`);
+        }
+        
         const errorText = await response.text();
         console.error('Ошибка при получении квеста:', errorText);
         throw new Error(`Ошибка при получении квеста: ${response.status} ${response.statusText}`);
+        
+      } catch (error) {
+        console.error('Ошибка при запросе квеста:', error);
+        throw error;
       }
-      
-      return response.json();
     },
     enabled: !!id
   });

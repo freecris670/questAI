@@ -35,6 +35,15 @@ export class QuestsController {
     return this.questsService.getTrialQuest(id);
   }
 
+  @Get('trial')
+  @ApiOperation({ summary: 'Получить все пробные квесты по IP адресу' })
+  async getTrialQuests(@Req() request: Request) {
+    // Получаем IP-адрес пользователя
+    const ip = this.questsService.getIpFromRequest(request);
+    
+    return this.questsService.getTrialQuestsByIp(ip);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Создать новый квест' })
   @ApiBearerAuth()
@@ -47,12 +56,7 @@ export class QuestsController {
     if (createQuestDto.trial_user) {
       // Запрос от неавторизованного пользователя - создаем trial квест
       // Получаем IP-адрес для идентификации неавторизованного пользователя
-      let ipAddress = request.headers['x-forwarded-for'];
-      if (Array.isArray(ipAddress)) {
-        ipAddress = ipAddress[0];
-      }
-      const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
-      const ip = ipAddress as string || remoteAddress;
+      const ip = this.questsService.getIpFromRequest(request);
       
       // Проверяем, не превышен ли лимит пробных квестов
       const trialLimits = await this.questsService.checkTrialQuestsLimit(ip);
@@ -89,12 +93,7 @@ export class QuestsController {
     @User('id') userId?: string
   ): Promise<IGeneratedQuestData> {
     // Получаем IP-адрес для отслеживания лимита
-    let ipAddress = request.headers['x-forwarded-for'];
-    if (Array.isArray(ipAddress)) {
-      ipAddress = ipAddress[0];
-    }
-    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
-    const ip = ipAddress as string || remoteAddress;
+    const ip = this.questsService.getIpFromRequest(request);
     
     // Проверяем лимиты частоты запросов
     const minuteRateLimit = await this.questsService.checkMinuteRateLimit(ip);
@@ -150,6 +149,19 @@ export class QuestsController {
   ): Promise<IQuestProgress> {
     return this.questsService.updateProgress(id, userId, updateProgressDto);
   }
+  
+  @Patch('trial/:id/progress')
+  @ApiOperation({ summary: 'Обновление прогресса выполнения пробного квеста для неавторизованных пользователей' })
+  @ApiParam({ name: 'id', description: 'ID пробного квеста' })
+  async updateTrialProgress(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Body() updateProgressDto: UpdateQuestProgressDto,
+  ): Promise<IQuestProgress> {
+    // Получаем IP адрес пользователя из заголовков
+    const ip = this.questsService.getIpFromRequest(request);
+    return this.questsService.updateTrialProgress(id, ip, updateProgressDto);
+  }
 
   @Post(':id/publish')
   @ApiOperation({ summary: 'Публикация квеста' })
@@ -179,14 +191,8 @@ export class QuestsController {
   @Get('trial/check-limit')
   @ApiOperation({ summary: 'Проверка лимита созданных пробных квестов' })
   async checkTrialQuestsLimit(@Req() request: Request) {
-    // Получаем IP-адрес из заголовков
-    let ipAddress = request.headers['x-forwarded-for'];
-    if (Array.isArray(ipAddress)) {
-      ipAddress = ipAddress[0];
-    }
-    // Используем фолбэк для локальной разработки
-    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
-    const ip = ipAddress as string || remoteAddress;
+    // Получаем IP-адрес пользователя
+    const ip = this.questsService.getIpFromRequest(request);
     
     // Получаем информацию о лимитах
     const trialLimits = await this.questsService.checkTrialQuestsLimit(ip);
@@ -213,14 +219,9 @@ export class QuestsController {
   @Post('trial/increment')
   @ApiOperation({ summary: 'Увеличение счетчика пробных квестов' })
   async incrementTrialQuestsCount(@Req() request: Request) {
-    // Получаем IP-адрес из заголовков
-    let ipAddress = request.headers['x-forwarded-for'];
-    if (Array.isArray(ipAddress)) {
-      ipAddress = ipAddress[0];
-    }
-    // Используем фолбэк для локальной разработки
-    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
-    return { questsCreated: await this.questsService.incrementTrialQuestsCount(ipAddress as string || remoteAddress) };
+    // Получаем IP-адрес пользователя
+    const ip = this.questsService.getIpFromRequest(request);
+    return { questsCreated: await this.questsService.incrementTrialQuestsCount(ip) };
   }
   
   

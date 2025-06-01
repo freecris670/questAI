@@ -1,3 +1,5 @@
+"use client";
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,36 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Search, ChevronRight, FileText } from 'lucide-react';
 import { MainHeader } from '@/components/layout/MainHeader';
 import { MainFooter } from '@/components/layout/MainFooter';
-
-// Временные данные для квестов
-const questsData = [
-  {
-    id: '1',
-    title: 'Разработать новую фичу для проекта X',
-    description: 'Теги: #работа #срочно. 3 подзадачи',
-    status: 'Активен' as const,
-    progress: 60, // в процентах
-    tasksCompleted: 3,
-    tasksTotal: 5,
-    createdAt: '24.05.2025',
-  },
-  {
-    id: '2',
-    title: 'Пройти курс по React Advanced',
-    description: 'Теги: #обучение. 10 модулей',
-    status: 'Завершен' as const,
-    createdAt: '15.04.2025',
-  },
-  {
-    id: '3',
-    title: 'Написать статью о Next.js для корпоративного блога',
-    description: 'Теги: #контент. Черновик. Задача на написание технической статьи.',
-    status: 'Черновик' as const,
-    createdAt: '20.05.2025',
-  },
-];
-
-// const questsData: QuestCardProps[] = []; // Для теста пустого состояния
+import { Spinner } from '@/components/ui/spinner';
+import { useQuests } from '@/lib/hooks/useQuests';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useState } from 'react';
 
 interface QuestCardProps {
   id: string;
@@ -87,7 +63,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ id, title, description, status, p
             </div>
           )}
           <p className="text-xs text-[#A0AEC0] mb-3">Создан: {createdAt}</p>
-          <Link href={`/quests/${id}`} passHref> 
+          <Link href={`/quest/${id}`} passHref> 
             <Button variant="outline" size="sm" className="border-[#2553A1] text-[#2553A1] hover:bg-[#2553A1]/10 rounded-md">
               Подробнее <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
@@ -99,6 +75,105 @@ const QuestCard: React.FC<QuestCardProps> = ({ id, title, description, status, p
 };
 
 export default function MyQuestsPage() {
+  const { user } = useAuth();
+  // Получаем квесты без передачи userId для неавторизованных пользователей
+  // или с userId для авторизованных
+  const { data: quests, isLoading, error } = useQuests(user?.id);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('date_new');
+
+  // Преобразуем данные квестов в формат для отображения
+  const transformQuest = (quest: {
+    id: string;
+    title: string;
+    description?: string;
+    tasks?: Array<{completed?: boolean}>;
+    created_at: string;
+  }): QuestCardProps => {
+    const tasks = quest.tasks || [];
+    const completedTasks = tasks.filter((task: {completed?: boolean}) => task.completed).length;
+    const totalTasks = tasks.length;
+    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+    
+    // Форматируем дату
+    const createdDate = new Date(quest.created_at);
+    const formattedDate = createdDate.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+
+    return {
+      id: quest.id,
+      title: quest.title,
+      description: quest.description || 'Описание квеста',
+      status: progress === 100 ? 'Завершен' : 'Активен',
+      progress: Math.round(progress),
+      tasksCompleted: completedTasks,
+      tasksTotal: totalTasks,
+      createdAt: formattedDate
+    };
+  };
+
+  // Фильтрация и сортировка квестов
+  const filteredQuests = quests ? quests
+    .map(transformQuest)
+    .filter((quest: QuestCardProps) => {
+      const matchesSearch = quest.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           quest.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || 
+                           (statusFilter === 'active' && quest.status === 'Активен') ||
+                           (statusFilter === 'completed' && quest.status === 'Завершен') ||
+                           (statusFilter === 'drafts' && quest.status === 'Черновик');
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a: QuestCardProps, b: QuestCardProps) => {
+      switch (sortBy) {
+        case 'date_new':
+          return new Date(b.createdAt.split('.').reverse().join('-')).getTime() - 
+                 new Date(a.createdAt.split('.').reverse().join('-')).getTime();
+        case 'date_old':
+          return new Date(a.createdAt.split('.').reverse().join('-')).getTime() - 
+                 new Date(b.createdAt.split('.').reverse().join('-')).getTime();
+        case 'name_asc':
+          return a.title.localeCompare(b.title);
+        default:
+          return 0;
+      }
+    }) : [];
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
+        <MainHeader />
+        <main className="flex-grow container mx-auto max-w-[1200px] px-4 md:px-6 lg:px-8 py-5 pt-20">
+          <div className="flex items-center justify-center py-20">
+            <Spinner className="w-12 h-12 text-[#2553A1]" />
+          </div>
+        </main>
+        <MainFooter />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
+        <MainHeader />
+        <main className="flex-grow container mx-auto max-w-[1200px] px-4 md:px-6 lg:px-8 py-5 pt-20">
+          <div className="text-center py-20">
+            <p className="text-xl text-red-600 mb-4">Ошибка загрузки квестов</p>
+            <Button onClick={() => window.location.reload()} className="bg-[#22B07D] text-white hover:bg-[#22B07D]/90 rounded-md">
+              Попробовать снова
+            </Button>
+          </div>
+        </main>
+        <MainFooter />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
       <MainHeader />
@@ -109,9 +184,15 @@ export default function MyQuestsPage() {
           <div className="flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-grow w-full md:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <Input type="text" placeholder="Поиск по названию или тегам..." className="pl-10 border-[#E3E6EA] rounded-md w-full" />
+              <Input 
+                type="text" 
+                placeholder="Поиск по названию или описанию..." 
+                className="pl-10 border-[#E3E6EA] rounded-md w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            <Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-[180px] border-[#E3E6EA] rounded-md text-[#64748B]">
                 <SelectValue placeholder="Статус" />
               </SelectTrigger>
@@ -122,7 +203,7 @@ export default function MyQuestsPage() {
                 <SelectItem value="drafts">Черновики</SelectItem>
               </SelectContent>
             </Select>
-            <Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-full md:w-[220px] border-[#E3E6EA] rounded-md text-[#64748B]">
                 <SelectValue placeholder="Сортировка" />
               </SelectTrigger>
@@ -132,19 +213,18 @@ export default function MyQuestsPage() {
                 <SelectItem value="name_asc">По названию (А-Я)</SelectItem>
               </SelectContent>
             </Select>
-            <Button className="bg-[#22B07D] text-white hover:bg-[#22B07D]/90 rounded-md w-full md:w-auto">
-              Применить фильтры
-            </Button>
           </div>
         </Card>
 
-        {questsData.length === 0 ? (
+        {filteredQuests.length === 0 ? (
           <div className="text-center py-10 bg-white rounded-md border border-[#E3E6EA] p-6">
             <div className="flex justify-center mb-6">
                 <FileText size={80} className="text-[#A0AEC0]" />
             </div>
-            <p className="text-xl font-medium text-[#64748B] mb-4">У вас пока нет созданных квестов.</p>
-            <Link href="/create-quest" passHref>
+            <p className="text-xl font-medium text-[#64748B] mb-4">
+              {quests && quests.length > 0 ? 'Квесты не найдены по заданным фильтрам.' : 'У вас пока нет созданных квестов.'}
+            </p>
+            <Link href="/" passHref>
               <Button className="bg-[#22B07D] text-white hover:bg-[#22B07D]/90 rounded-md">
                 Создать новый квест
               </Button>
@@ -152,19 +232,9 @@ export default function MyQuestsPage() {
           </div>
         ) : (
           <div>
-            {questsData.map((quest) => (
+            {filteredQuests.map((quest: QuestCardProps) => (
               <QuestCard key={quest.id} {...quest} />
             ))}
-          </div>
-        )}
-
-        {questsData.length > 3 && (
-          <div className="mt-8 flex justify-center items-center space-x-1 md:space-x-2 text-sm">
-            <Button variant="outline" size="sm" disabled className="rounded-md">« Назад</Button>
-            <Button variant="outline" size="sm" className="bg-[#2553A1]/10 border-[#2553A1] text-[#2553A1] rounded-md">1</Button>
-            <Button variant="outline" size="sm" className="rounded-md">2</Button>
-            <Button variant="outline" size="sm" className="rounded-md">3</Button>
-            <Button variant="outline" size="sm" className="rounded-md">Вперед »</Button>
           </div>
         )}
       </main>

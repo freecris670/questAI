@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useQuest } from '@/lib/hooks/useQuests';
+import { useQuest, useUpdateTaskProgress } from '@/lib/hooks/useQuests';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { MainHeader } from '@/components/layout/MainHeader';
 import { MainFooter } from '@/components/layout/MainFooter';
@@ -48,11 +48,22 @@ export default function QuestPage() {
   const questId = params.id as string;
   
   // Используем хук для загрузки квеста (он автоматически определит trial или обычный)
-  const { data: quest, isLoading, error } = useQuest(questId);
+  const { data: quest, isLoading, error, refetch } = useQuest(questId);
+  
+  // Хук для обновления статуса задачи
+  const updateTaskMutation = useUpdateTaskProgress(questId);
 
-  // Если в данных квеста нет ни tasks, ни subtasks, добавляем пустой массив tasks
-  if (quest && !quest.tasks && !quest.subtasks) {
-    quest.tasks = [];
+  // Валидация и нормализация данных квеста
+  if (quest) {
+    // Проверяем наличие и валидность поля tasks
+    if (!quest.tasks || !Array.isArray(quest.tasks)) {
+      quest.tasks = [];
+    }
+    
+    // Проверяем наличие и валидность поля subtasks
+    if (!quest.subtasks || !Array.isArray(quest.subtasks)) {
+      quest.subtasks = [];
+    }
   }
 
   if (isLoading) {
@@ -97,7 +108,7 @@ export default function QuestPage() {
       
       <main className="flex-grow container mx-auto max-w-[1200px] px-5 py-5 md:py-10 mt-20">
         <div className="flex items-center mb-6">
-          <Link href="/quests" className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+          <Link href="/my-quests" className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
             <ChevronLeftIcon size={16} className="mr-1" /> 
             <span>Назад к квестам</span>
           </Link>
@@ -106,19 +117,19 @@ export default function QuestPage() {
           </div>
         </div>
         
-        {/* Предупреждение для пробного квеста */}
+        {/* Ненавязчивое предложение регистрации */}
         {!user && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Trophy className="w-6 h-6 text-amber-600" />
-              <p className="text-amber-800">
-                Это пробный квест. Зарегистрируйтесь, чтобы сохранить прогресс и разблокировать все функции!
+              <Trophy className="w-6 h-6 text-[#2553A1]" />
+              <p className="text-gray-700">
+                Зарегистрируйтесь, чтобы сохранить прогресс и получить доступ к дополнительным возможностям!
               </p>
             </div>
             <Button 
-              variant="default" 
+              variant="outline" 
               size="sm"
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="border-[#2553A1] text-[#2553A1] hover:bg-[#2553A1]/10 rounded-md"
               onClick={() => router.push('/auth')}
             >
               Регистрация
@@ -268,11 +279,30 @@ export default function QuestPage() {
                       ? "bg-green-50 border-green-300" 
                       : "bg-white border-gray-200 hover:border-[#2553A1] hover:shadow-md"
                   )}
+                  onClick={() => {
+                    // Обработка клика по задаче для изменения статуса
+                    updateTaskMutation.mutate(
+                      {
+                        taskId: task.id || `task_${index}`,
+                        completed: !task.completed,
+                      },
+                      {
+                        onSuccess: () => {
+                          // Обновляем данные квеста после успешного обновления статуса
+                          refetch();
+                        },
+                        onError: (error) => {
+                          console.error('Ошибка при обновлении статуса задачи:', error);
+                          alert('Не удалось обновить статус задачи. Попробуйте еще раз.');
+                        }
+                      }
+                    );
+                  }}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 flex items-start space-x-4">
                       <div className={cn(
-                        "w-10 h-10 rounded-lg flex items-center justify-center font-bold",
+                        "w-10 h-10 rounded-lg flex items-center justify-center font-bold cursor-pointer",
                         task.completed
                           ? "bg-green-500 text-white"
                           : "bg-gradient-to-br from-[#2553A1] to-[#3B82F6] text-white"

@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 
 // Маршруты, требующие авторизации
 const PROTECTED_ROUTES = [
-  '/my-quests',
+  // '/my-quests', // Разрешаем доступ неавторизованным пользователям
   '/settings',
   '/quest/create',
   '/quest/edit',

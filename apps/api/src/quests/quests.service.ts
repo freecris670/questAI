@@ -30,6 +30,137 @@ export class QuestsService {
     // Запускаем периодическую очистку устаревших запросов
     this.startGenerationRequestsCleanup();
   }
+  
+  /**
+   * Извлекает IP-адрес из объекта запроса
+   * @param request Объект запроса Express
+   * @returns IP-адрес пользователя
+   */
+  getIpFromRequest(request: any): string {
+    // Пытаемся получить IP из заголовка X-Forwarded-For
+    let ipAddress = request.headers['x-forwarded-for'];
+    
+    // Если заголовок содержит массив адресов, берем первый
+    if (Array.isArray(ipAddress)) {
+      ipAddress = ipAddress[0];
+    }
+    
+    // Если заголовок отсутствует, берем IP из объекта соединения
+    const remoteAddress = request.connection?.remoteAddress ||
+      request.socket?.remoteAddress ||
+      request.ip ||
+      '127.0.0.1';
+    
+    // Возвращаем IP из заголовка или из соединения
+    return (ipAddress as string) || remoteAddress;
+  }
+  
+  /**
+   * Валидация структуры данных квеста, полученных от OpenAI
+   * @param content Данные квеста от OpenAI
+   * @param defaultDescription Описание квеста по умолчанию
+   * @returns Валидированные данные квеста
+   */
+  validateQuestContent(content: any, defaultDescription: string): any {
+    // Создаем базовую структуру с дефолтными значениями
+    const validatedContent: {
+      title: string;
+      description: string;
+      questType: string;
+      difficulty: string;
+      tasks: any[];
+      subtasks?: any[];
+      rewards: {
+        xp: number;
+        itemName: string;
+      };
+    } = {
+      title: content.title || 'Новый квест',
+      description: content.description || defaultDescription || '',
+      questType: content.questType || 'adventure',
+      difficulty: content.difficulty || 'normal',
+      tasks: [],
+      rewards: {
+        xp: 100,
+        itemName: 'Награда за квест'
+      }
+    };
+    
+    // Проверяем поле tasks
+    if (content.tasks && Array.isArray(content.tasks)) {
+      validatedContent.tasks = content.tasks.map((task: any) => ({
+        id: task.id || this.generateUniqueId(),
+        title: task.title || 'Задача',
+        description: task.description || '',
+        completed: task.completed || false,
+        xp: task.xp || 10
+      }));
+    }
+    
+    // Проверяем поле subtasks (если есть)
+    if (content.subtasks && Array.isArray(content.subtasks)) {
+      validatedContent.subtasks = content.subtasks.map((task: any) => ({
+        id: task.id || this.generateUniqueId(),
+        title: task.title || 'Задача',
+        description: task.description || '',
+        completed: task.completed || false,
+        xp: task.xp || 10
+      }));
+    }
+    
+    // Проверяем поле rewards
+    if (content.rewards && typeof content.rewards === 'object') {
+      validatedContent.rewards = {
+        xp: content.rewards.xp || 100,
+        itemName: content.rewards.itemName || 'Награда за квест'
+      };
+    }
+    
+    return validatedContent;
+  }
+  
+  /**
+   * Генерация уникального ID для задачи
+   * @returns Уникальный ID
+   */
+  private generateUniqueId(): string {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
+  
+  /**
+   * Проверка наличия существующего запроса на генерацию квеста
+   * @param userId ID пользователя
+   * @param params Параметры генерации
+   * @param ipAddress IP-адрес пользователя
+   * @param isTrial Является ли запрос пробным
+   * @returns Объект с результатом проверки и ID запроса
+   * @private
+   */
+  private checkExistingGenerationRequest(userId: string, params: GenerateQuestDto, ipAddress: string, isTrial: boolean): { exists: boolean; requestId: string; existingResult?: IGeneratedQuestData } {
+    const requestId = this.generateRequestId(userId, params, isTrial);
+    
+    // Ищем похожие активные запросы (с той же темой от того же пользователя/IP)
+    for (const [id, request] of this.activeGenerationRequests.entries()) {
+      const sameUser = request.userId === userId || request.ipAddress === ipAddress;
+      const similarTheme = request.params.theme.toLowerCase().includes(params.theme.toLowerCase()) ||
+                          params.theme.toLowerCase().includes(request.params.theme.toLowerCase());
+      
+      if (sameUser && similarTheme && request.isTrial === isTrial) {
+        console.log(`Найден существующий запрос на генерацию: ${id}`);
+        
+        // Если запрос уже имеет результат, возвращаем его
+        if (request.result) {
+          return { exists: true, requestId: id, existingResult: request.result };
+        }
+        
+        // Запрос существует, но результата еще нет
+        return { exists: true, requestId: id };
+      }
+    }
+    
+    // Не нашли похожих запросов
+    return { exists: false, requestId };
+  }
 
   /**
    * Получение всех квестов
@@ -200,6 +331,9 @@ export class QuestsService {
       try {
         // Парсим JSON ответ
         questContent = JSON.parse(response);
+        
+        // Валидация структуры ответа от OpenAI
+        questContent = this.validateQuestContent(questContent, questData.description || '');
       } catch (e) {
         console.error('Ошибка при парсинге JSON ответа от OpenAI:', e, 'Ответ:', response);
         questContent = {
@@ -216,12 +350,7 @@ export class QuestsService {
       const dbQuestData = {
         title: questContent.title || 'Новый квест',
         description: questContent.description || questData.description || '',
-        content: {
-          questType: questContent.questType || 'adventure',
-          difficulty: questContent.difficulty || 'normal',
-          tasks: questContent.tasks || [],
-          rewards: questContent.rewards || { xp: 100, itemName: 'Награда за квест' }
-        },
+        content: questContent,
         ip_address: questData.ip_address,
         created_at: new Date().toISOString(),
         original_request: questData.description
@@ -277,6 +406,43 @@ export class QuestsService {
       };
     } catch (error) {
       console.error('Ошибка при получении пробного квеста:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение всех trial квестов по IP адресу
+   * @param ipAddress IP-адрес пользователя
+   */
+  async getTrialQuestsByIp(ipAddress: string): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabaseService.client
+        .from('trial_quests')
+        .select('*')
+        .eq('ip_address', ipAddress)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw new Error(`Ошибка при получении trial квестов: ${error.message}`);
+      }
+
+      // Преобразуем данные в формат, ожидаемый фронтендом
+      return data.map(quest => ({
+        id: quest.id,
+        title: quest.title,
+        description: quest.description,
+        questType: quest.content?.questType || 'adventure',
+        difficulty: quest.content?.difficulty || 'medium',
+        tasks: quest.content?.tasks || [],
+        rewards: quest.content?.rewards || {
+          xp: 100,
+          itemName: 'Награда за квест'
+        },
+        created_at: quest.created_at,
+        status: 'active' // trial квесты всегда активны
+      }));
+    } catch (error) {
+      console.error('Ошибка при получении trial квестов:', error);
       throw error;
     }
   }
@@ -378,19 +544,16 @@ export class QuestsService {
    * @param isTrial Является ли запрос пробным
    * @returns Объект с результатом проверки и ID запроса
    * @private
-   */
-  private checkExistingGenerationRequest(userId: string, params: GenerateQuestDto, ipAddress: string, isTrial: boolean): { exists: boolean; requestId: string; existingResult?: IGeneratedQuestData } {
-    const requestId = this.generateRequestId(userId, params, isTrial);
     
-    // Ищем похожие активные запросы (с той же темой от того же пользователя/IP)
-    for (const [id, request] of this.activeGenerationRequests.entries()) {
-      const sameUser = request.userId === userId || request.ipAddress === ipAddress;
-      const similarTheme = request.params.theme.toLowerCase().includes(params.theme.toLowerCase()) ||
-                          params.theme.toLowerCase().includes(request.params.theme.toLowerCase());
-      
-      if (sameUser && similarTheme && request.isTrial === isTrial) {
-        console.log(`Найден существующий запрос на генерацию: ${id}`);
-        
+    // Проверяем поле tasks
+    if (content.tasks && Array.isArray(content.tasks)) {
+      validatedContent.tasks = content.tasks.map((task: any) => ({
+        id: task.id || this.generateUniqueId(),
+        title: task.title || 'Задача',
+        description: task.description || '',
+        completed: task.completed || false,
+        xp: task.xp || 10
+      }));
         // Если запрос уже имеет результат, возвращаем его
         if (request.result) {
           return { exists: true, requestId: id, existingResult: request.result };
@@ -584,7 +747,7 @@ export class QuestsService {
 
       // Преобразуем данные в формат IGeneratedQuestData
       const result: IGeneratedQuestData = {
-        id: createdQuest.id,
+        id: createdQuest.id, // Убираем префикс, чтобы пользователь не видел разницы
         title: createdQuest.title,
         description: createdQuest.description,
         questType: createdQuest.content?.questType || 'adventure',
@@ -641,6 +804,77 @@ export class QuestsService {
     return { success: true };
   }
   
+  /**
+   * Обновление прогресса выполнения пробного квеста для неавторизованных пользователей
+   * @param id ID пробного квеста
+   * @param ip IP-адрес пользователя
+   * @param progressData Данные прогресса
+   */
+  async updateTrialProgress(id: string, ip: string, progressData: UpdateQuestProgressDto): Promise<IQuestProgress> {
+    // Проверяем существование пробного квеста
+    const { data: quest, error: questError } = await this.supabaseService.client
+      .from('trial_quests')
+      .select('*')
+      .eq('id', id)
+      .eq('ip_address', ip)
+      .single();
+
+    if (questError || !quest) {
+      throw new Error('Пробный квест не найден или у вас нет доступа к нему');
+    }
+
+    // Получаем задачи квеста
+    const questContent = quest.content as Record<string, any>;
+    const tasks = questContent.tasks || questContent.subtasks || [];
+    
+    // Находим задачу по ID
+    const taskIndex = tasks.findIndex((t: any) => t.id === progressData.taskId);
+    if (taskIndex === -1) {
+      throw new Error('Задача не найдена');
+    }
+    
+    // Обновляем статус задачи
+    const task = tasks[taskIndex];
+    task.completed = progressData.completed;
+    if (progressData.progress !== undefined) {
+      task.progress = progressData.progress;
+    }
+    
+    // Обновляем задачи в квесте
+    if (questContent.tasks) {
+      questContent.tasks[taskIndex] = task;
+    } else if (questContent.subtasks) {
+      questContent.subtasks[taskIndex] = task;
+    }
+    
+    // Рассчитываем общий прогресс квеста
+    const completedTasks = tasks.filter((t: any) => t.completed).length;
+    const totalTasks = tasks.length;
+    const questProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    // Обновляем квест в базе данных
+    const { error: updateError } = await this.supabaseService.client
+      .from('trial_quests')
+      .update({
+        content: questContent,
+        updated_at: new Date().toISOString(),
+        status: questProgress >= 100 ? 'completed' : 'active'
+      })
+      .eq('id', id)
+      .eq('ip_address', ip);
+      
+    if (updateError) {
+      console.error('Ошибка при обновлении пробного квеста:', updateError);
+      throw new Error('Ошибка при обновлении прогресса квеста');
+    }
+    
+    return {
+      questProgress,
+      taskCompleted: progressData.completed,
+      xpEarned: progressData.completed ? (task.xp || 0) : 0
+    };
+  }
+
   /**
    * Обновление прогресса выполнения квеста
    * @param id ID квеста

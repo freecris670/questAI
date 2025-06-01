@@ -33,22 +33,22 @@ export const MainHeader = () => {
           </Link>
           
           {/* Навигационные ссылки */}
-          {isAuthenticated && (
-            <div className="hidden sm:flex items-center space-x-6">
+          <div className="hidden sm:flex items-center space-x-6">
+            {isAuthenticated && (
               <Link 
                 href="/dashboard" 
                 className="text-gray-700 dark:text-gray-200 hover:text-quest-blue dark:hover:text-blue-400 font-medium"
               >
                 Дашборд
               </Link>
-              <Link 
-                href="/quests" 
-                className="text-gray-700 dark:text-gray-200 hover:text-quest-blue dark:hover:text-blue-400 font-medium"
-              >
-                Мои квесты
-              </Link>
-            </div>
-          )}
+            )}
+            <Link 
+              href="/my-quests" 
+              className="text-gray-700 dark:text-gray-200 hover:text-quest-blue dark:hover:text-blue-400 font-medium"
+            >
+              Мои квесты
+            </Link>
+          </div>
         </div>
         
         <nav className="flex items-center gap-3 md:gap-4">
