@@ -8,7 +8,7 @@
 
 ```
 SUPABASE_URL=https://your-project-url.supabase.co
-SUPABASE_SERVICE_KEY=your-service-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-key
 SUPABASE_JWT_SECRET=your-jwt-secret
 ```
 

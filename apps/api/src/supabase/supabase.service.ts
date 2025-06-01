@@ -14,7 +14,7 @@ export class SupabaseService implements OnModuleInit {
 
   onModuleInit() {
     this.supabaseUrl = this.configService.get<string>('SUPABASE_URL') || '';
-    this.supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY') || '';
+    this.supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY') || '';
     this.supabaseJwtSecret = this.configService.get<string>('SUPABASE_JWT_SECRET') || '';
 
     if (!this.supabaseUrl || !this.supabaseKey) {

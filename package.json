@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build --filter=@questai/web",
+    "build:web": "turbo run build --filter=@questai/web",
     "build:api": "turbo run build --filter=@questai/api",
-    "build:all": "turbo run build",
+    "build": "turbo run build",
     "start": "turbo run start",
-    "start:api": "cd apps/api && pnpm run start:prod",
-    "start:web": "cd apps/web && pnpm run start",
+    "start:api": "turbo run start --filter=@questai/api",
+    "start:web": "turbo run start --filter=@questai/web",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint --fix"
