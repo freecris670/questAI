@@ -23,7 +23,6 @@
 
 1. **Создайте новый сервис для API:**
    - Name: `questai-api`
-   - Root Directory: `apps/api`
    - Build Command: (оставьте пустым)
    - Start Command: (оставьте пустым)
 
@@ -44,7 +43,6 @@
 
 1. **Создайте новый сервис для Web:**
    - Name: `questai-web`
-   - Root Directory: `apps/web`
    - Build Command: (оставьте пустым)
    - Start Command: (оставьте пустым)
 

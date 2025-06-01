@@ -40,14 +40,14 @@ NODE_ENV=production
 
 #### API Service:
 1. Подключите репозиторий к Railway
-2. Установите Root Directory: `apps/api`
+2. **НЕ устанавливайте Root Directory** (оставьте пустым)
 3. Dockerfile Path: `apps/api/Dockerfile`
 4. Build Command: оставьте пустым (используется Dockerfile)
 5. Start Command: оставьте пустым (используется Dockerfile)
 
 #### Web Service:
 1. Подключите тот же репозиторий
-2. Установите Root Directory: `apps/web`
+2. **НЕ устанавливайте Root Directory** (оставьте пустым)
 3. Dockerfile Path: `apps/web/Dockerfile`
 4. Build Command: оставьте пустым (используется Dockerfile)
 5. Start Command: оставьте пустым (используется Dockerfile)
