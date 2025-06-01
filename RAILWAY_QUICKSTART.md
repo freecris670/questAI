@@ -1,26 +1,21 @@
 # Railway Quick Start Guide
 
-## 🚀 Быстрый деплой на Railway
+⚠️ **ВАЖНО**: Перед деплоем установите переменные окружения в Railway Dashboard!
 
-### Шаг 1: Подготовка проекта
-```bash
-# Тестирование сборки локально
-./test-build.sh
-```
+## 🚀 Быстрый деплой (5 минут)
 
-### Шаг 2: Создание проектов на Railway
+### 1. Создайте проект в Railway
+1. Зайдите на [railway.app](https://railway.app)
+2. Создайте новый проект
+3. Выберите "Deploy from GitHub repo"
 
-1. Перейдите на [railway.app](https://railway.app)
-2. Нажмите "New Project" → "Deploy from GitHub repo"
-3. Выберите ваш репозиторий
-
-### Шаг 3: Настройка API Service
+### 2. Настройте API Service
 
 1. **Создайте новый сервис для API:**
    - Name: `questai-api`
    - Root Directory: `apps/api`
-   - Build Command: (оставьте пустым)
-   - Start Command: (оставьте пустым)
+   - Build Command: `pnpm install && pnpm run build`
+   - Start Command: `pnpm run start:prod`
 
 2. **Добавьте переменные окружения:**
    ```env
@@ -32,10 +27,7 @@
    NODE_ENV=production
    ```
 
-3. **Настройте Dockerfile:**
-   - Dockerfile Path: `apps/api/Dockerfile`
-
-### Шаг 4: Настройка Web Service
+### 3. Настройте Web Service
 
 1. **Создайте новый сервис для Web:**
    - Name: `questai-web`
