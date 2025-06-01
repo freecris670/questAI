@@ -14,6 +14,7 @@ RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/ ./packages/
+COPY turbo.json ./
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -31,7 +32,7 @@ ENV NEXT_PUBLIC_API_URL=http://localhost:3001
 
 # Build the application
 RUN npm install -g pnpm
-RUN cd apps/web && pnpm run build
+RUN pnpm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
