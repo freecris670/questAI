@@ -14,10 +14,9 @@ RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/ ./packages/
-COPY turbo.json ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies - используем workspace для установки только нужных зависимостей
+RUN pnpm install --frozen-lockfile --filter=@questai/web...
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -32,7 +31,8 @@ ENV NEXT_PUBLIC_API_URL=http://localhost:3001
 
 # Build the application
 RUN npm install -g pnpm
-RUN pnpm run build
+# Используем прямую команду сборки Next.js
+RUN cd apps/web && pnpm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

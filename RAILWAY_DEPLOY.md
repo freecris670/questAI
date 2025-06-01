@@ -38,19 +38,52 @@ NODE_ENV=production
 
 ### 3. Настройка деплоя
 
-#### API Service:
-1. Подключите репозиторий к Railway
-2. **НЕ устанавливайте Root Directory** (оставьте пустым)
-3. Dockerfile Path: `apps/api/Dockerfile`
-4. Build Command: оставьте пустым (используется Dockerfile)
-5. Start Command: оставьте пустым (используется Dockerfile)
+**⚠️ ВАЖНО: Railway автоматически находит Dockerfile**
 
-#### Web Service:
+Railway ищет Dockerfile в следующем порядке:
+1. В Root Directory (если указан)
+2. В корне репозитория
+
+#### Способ 1: Используя Root Directory (рекомендуется - самый простой)
+Этот способ использует оптимизированные Dockerfile в папках приложений.
+
+**API Service:**
+1. Подключите репозиторий к Railway
+2. Root Directory: `apps/api`
+3. Railway автоматически найдет `apps/api/Dockerfile`
+
+**Web Service:**
 1. Подключите тот же репозиторий
-2. **НЕ устанавливайте Root Directory** (оставьте пустым)
-3. Dockerfile Path: `apps/web/Dockerfile`
-4. Build Command: оставьте пустым (используется Dockerfile)
-5. Start Command: оставьте пустым (используется Dockerfile)
+2. Root Directory: `apps/web`
+3. Railway автоматически найдет `apps/web/Dockerfile`
+
+✅ **Преимущества**: 
+- Простая настройка
+- Dockerfile уже оптимизированы для раздельной сборки
+- Не нужно переименовывать файлы
+
+#### Способ 2: Использование railway.toml (для продвинутых пользователей)
+Для использования оптимизированных Dockerfile из корня:
+
+**Для API Service:**
+```bash
+# Переименуйте railway.api.toml в railway.toml
+cp railway.api.toml railway.toml
+git add railway.toml
+git commit -m "Configure API service"
+git push
+```
+
+**Для Web Service (в отдельной ветке):**
+```bash
+git checkout -b web-service
+cp railway.web.toml railway.toml
+git add railway.toml
+git commit -m "Configure Web service"
+git push
+```
+
+Затем в Railway настройте каждый сервис на свою ветку.
 
 ### 4. Настройка доменов
 

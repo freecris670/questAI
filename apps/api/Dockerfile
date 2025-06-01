@@ -12,17 +12,16 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/ ./packages/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies - используем workspace для установки зависимостей
+RUN pnpm install --frozen-lockfile --filter=@questai/api...
 
 # Copy source code
 COPY apps/api/ ./apps/api/
 COPY tsconfig.base.json ./
 COPY tsconfig.json ./
-COPY turbo.json ./
 
-# Build only the API application
-RUN pnpm run build:api
+# Build only the API application directly
+RUN cd apps/api && pnpm run build
 
 # Expose port
 EXPOSE 3001

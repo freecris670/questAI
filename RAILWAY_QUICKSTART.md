@@ -23,8 +23,10 @@
 
 1. **Создайте новый сервис для API:**
    - Name: `questai-api`
+   - Root Directory: `apps/api`
    - Build Command: (оставьте пустым)
    - Start Command: (оставьте пустым)
+   - Railway автоматически найдет Dockerfile
 
 2. **Добавьте переменные окружения:**
    ```env
@@ -43,8 +45,10 @@
 
 1. **Создайте новый сервис для Web:**
    - Name: `questai-web`
+   - Root Directory: `apps/web`
    - Build Command: (оставьте пустым)
    - Start Command: (оставьте пустым)
+   - Railway автоматически найдет Dockerfile
 
 2. **Добавьте переменные окружения:**
    ```env
@@ -53,9 +57,6 @@
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    NODE_ENV=production
    ```
-
-3. **Настройте Dockerfile:**
-   - Dockerfile Path: `apps/web/Dockerfile`
 
 ### Шаг 5: Получение доменов
 

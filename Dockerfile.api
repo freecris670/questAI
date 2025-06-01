@@ -1,0 +1,38 @@
+# Оптимизированный Dockerfile для API на Railway
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy only necessary files for dependency installation
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/ui/package.json ./packages/ui/
+
+# Install only API dependencies
+RUN pnpm install --frozen-lockfile --filter=@questai/api --filter=@questai/ui
+
+# Copy source code
+COPY apps/api ./apps/api
+COPY packages/ui ./packages/ui
+COPY tsconfig.base.json tsconfig.json ./
+
+# Build UI package first (API depends on it)
+RUN cd packages/ui && pnpm run build
+
+# Build API
+RUN cd apps/api && pnpm run build
+
+# Production stage
+FROM node:18-alpine
+WORKDIR /app
+
+# Copy built application
+COPY --from=0 /app/apps/api/dist ./apps/api/dist
+COPY --from=0 /app/node_modules ./node_modules
+
+EXPOSE 3001
+
+CMD ["node", "apps/api/dist/main.js"]
