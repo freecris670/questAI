@@ -27,31 +27,43 @@ export async function middleware(request: NextRequest) {
   
   // Пропускаем API запросы пробных квестов
   if (path.startsWith('/quest/generating') || 
-      (path.includes('/quest/') && path.includes('/details'))) {
+      path.startsWith('/quest/trial') ||
+      path === '/') {
     return NextResponse.next();
   }
   
-  let supabaseResponse = NextResponse.next({
+  // Проверяем переменные окружения
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // В режиме сборки просто пропускаем
+    if (process.env.NODE_ENV === 'production' && !request.headers.get('user-agent')) {
+      return NextResponse.next();
+    }
+    console.warn('Supabase environment variables are not set');
+    return NextResponse.next();
+  }
+  
+  // Создаем клиент Supabase для проверки авторизации
+  const supabaseResponse = NextResponse.next({
     request,
   });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
+          cookiesToSet.forEach(({ name, value, options }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value }) =>
-            supabaseResponse.cookies.set(name, value)
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
           );
         },
       },
@@ -106,5 +118,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|images|avatars|api/quests/generate/trial|api/quests/trial).*)',
   ],
 };
-
-// (Removed unused Database interface to comply with eslint rules.)

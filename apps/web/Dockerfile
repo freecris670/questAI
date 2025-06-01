@@ -24,6 +24,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Устанавливаем заглушки для переменных окружения во время сборки
+ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder_key
+ENV NEXT_PUBLIC_API_URL=http://localhost:3001
+
 # Build the application
 RUN npm install -g pnpm
 RUN cd apps/web && pnpm run build

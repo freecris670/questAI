@@ -1,10 +1,33 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let supabaseInstance: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Отсутствуют необходимые переменные окружения для Supabase');
+function getSupabaseClient() {
+  if (!supabaseInstance) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      // В режиме сборки возвращаем заглушку
+      if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+        return null as any;
+      }
+      throw new Error('Отсутствуют необходимые переменные окружения для Supabase');
+    }
+
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  return supabaseInstance;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(target, prop) {
+    const client = getSupabaseClient();
+    if (!client) {
+      // Возвращаем заглушку для методов во время сборки
+      return () => Promise.resolve({ data: null, error: null });
+    }
+    return client[prop as keyof SupabaseClient];
+  }
+});

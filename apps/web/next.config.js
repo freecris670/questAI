@@ -39,8 +39,12 @@ const nextConfig = {
   // Переменные окружения
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333',
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  },
+  // Пропускаем генерацию статических страниц для динамических роутов
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
   },
   webpack: (config) => {
     // Добавляем алиасы для Webpack
