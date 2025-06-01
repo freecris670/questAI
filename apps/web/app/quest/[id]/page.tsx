@@ -13,6 +13,37 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
+// Интерфейс для задач, которые приходят с бэкенда
+interface BackendQuestTask {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  xp: number;
+}
+
+// Интерфейс для данных квеста
+interface QuestData {
+  id: string;
+  title: string;
+  description: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  estimatedTime?: string;
+  tasks?: BackendQuestTask[];
+  subtasks?: BackendQuestTask[];
+  achievements?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    completed: boolean;
+  }>;
+  questType?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  status?: 'active' | 'completed';
+  participantsCount?: number;
+}
+
 // Функция для определения иконки сложности
 const getDifficultyIcon = (difficulty?: string) => {
   switch (difficulty) {
@@ -48,10 +79,13 @@ export default function QuestPage() {
   const questId = params.id as string;
   
   // Используем хук для загрузки квеста (он автоматически определит trial или обычный)
-  const { data: quest, isLoading, error, refetch } = useQuest(questId);
+  const { data: questData, isLoading, error, refetch } = useQuest(questId);
   
   // Хук для обновления статуса задачи
   const updateTaskMutation = useUpdateTaskProgress(questId);
+
+  // Типизируем данные квеста
+  const quest = questData as QuestData | null;
 
   // Валидация и нормализация данных квеста
   if (quest) {
@@ -90,18 +124,13 @@ export default function QuestPage() {
   }
 
   // Вычисляем прогресс квеста
-  const tasks = quest.tasks || quest.subtasks || [];
-  const completedTasks = tasks.filter((task: any) => task.completed).length;
+  const tasks = [...(quest.tasks || []), ...(quest.subtasks || [])] as BackendQuestTask[];
+  const completedTasks = tasks.filter((task: BackendQuestTask) => task.completed).length;
   const totalTasks = tasks.length;
   const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-  const totalXP = tasks.reduce((sum: number, task: any) => sum + (task.xp || 0), 0);
-  const earnedXP = tasks.filter((task: any) => task.completed).reduce((sum: number, task: any) => sum + (task.xp || 0), 0);
+  const totalXP = tasks.reduce((sum: number, task: BackendQuestTask) => sum + task.xp, 0);
+  const earnedXP = tasks.filter((task: BackendQuestTask) => task.completed).reduce((sum: number, task: BackendQuestTask) => sum + task.xp, 0);
 
-  // Добавляем проверку и отладочную информацию
-  console.warn('Данные квеста:', quest);
-  console.warn('Задачи квеста:', tasks);
-  console.warn('Количество задач:', totalTasks);
-  
   return (
     <div className="min-h-screen bg-[#F7F9FB] flex flex-col">
       <MainHeader />
@@ -148,7 +177,7 @@ export default function QuestPage() {
               </div>
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
-                  {quest.title}
+                  {quest.title || 'Загрузка...'}
                 </h1>
                 <div className="flex items-center space-x-3 mt-1">
                   <span className={cn(
@@ -166,7 +195,7 @@ export default function QuestPage() {
           {/* Контент квеста */}
           <div className="p-6 md:p-8">
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-              {quest.description}
+              {quest.description || ''}
             </p>
             
             {/* Прогресс квеста */}
@@ -270,9 +299,9 @@ export default function QuestPage() {
             </div>
             
             <div className="space-y-4">
-              {tasks.map((task: any, index: number) => (
+              {tasks.map((task: BackendQuestTask, index: number) => (
                 <div 
-                  key={task.id || index}
+                  key={task.id || `task-${index}`}
                   className={cn(
                     "border-2 rounded-xl p-5 transition-all duration-300",
                     task.completed 
@@ -293,7 +322,6 @@ export default function QuestPage() {
                         },
                         onError: (error) => {
                           console.error('Ошибка при обновлении статуса задачи:', error);
-                          alert('Не удалось обновить статус задачи. Попробуйте еще раз.');
                         }
                       }
                     );
@@ -332,7 +360,7 @@ export default function QuestPage() {
                           : "bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700"
                       )}>
                         <Award className="w-4 h-4" />
-                        <span>{task.xp || 20} XP</span>
+                        <span>{task.xp} XP</span>
                       </div>
                     </div>
                   </div>

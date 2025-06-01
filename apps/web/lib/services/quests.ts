@@ -163,11 +163,25 @@ export async function getQuestById(id: string): Promise<QuestDetails | null> {
   }
 }
 
+interface QuestContentRequest {
+  description: string;
+  title: string;
+  questType: string;
+  contentType: 'stages' | 'tasks' | 'achievements';
+}
+
+interface QuestDataInput {
+  description?: string;
+  title?: string;
+  questType?: string;
+  [key: string]: unknown;
+}
+
 // Функция для генерации контента через API бэкенда
-async function generateContentFromBackend(questData: any, type: 'stages' | 'tasks' | 'achievements'): Promise<any> {
+async function generateContentFromBackend(questData: QuestDataInput, type: 'stages' | 'tasks' | 'achievements'): Promise<unknown> {
   try {
     // Формируем данные для запроса
-    const requestData = {
+    const requestData: QuestContentRequest = {
       description: questData.description || 'Квест без описания',
       title: questData.title || 'Неизвестный квест',
       questType: questData.questType || 'adventure',
@@ -213,118 +227,131 @@ async function generateContentFromBackend(questData: any, type: 'stages' | 'task
 }
 
 // Вспомогательная функция для генерации стандартных этапов, если в БД их нет
-async function generateDefaultStages(questData?: any): Promise<QuestStage[]> {
-  // Пытаемся сгенерировать через API бэкенда
+async function generateDefaultStages(questData?: QuestDataInput): Promise<QuestStage[]> {
   try {
+    // Пытаемся получить этапы через API бэкенда
     const backendResult = await generateContentFromBackend(questData || {}, 'stages');
-    
-    if (backendResult && backendResult.stages && backendResult.stages.length > 0) {
-      return backendResult.stages.map((stage: any, index: number) => ({
-        name: stage.name,
-        completed: index === 0 // Первый этап считаем выполненным
-      }));
+    if (backendResult && typeof backendResult === 'object' && 'stages' in backendResult) {
+      const stages = (backendResult as { stages: unknown[] }).stages;
+      return stages.map((stage: unknown, index: number) => {
+        const stageObj = stage as Record<string, unknown>;
+        return {
+          name: typeof stageObj.title === 'string' ? stageObj.title : `Этап ${index + 1}`,
+          completed: false
+        };
+      });
     }
   } catch (error) {
     console.error('Ошибка при генерации этапов через API:', error);
   }
-  
-  // Запасной вариант, если API не сработал
+
+  // Запасной вариант - статические этапы
   return [
-    { name: 'Начало', completed: true },
-    { name: 'Середина', completed: false },
-    { name: 'Завершение', completed: false }
+    {
+      name: 'Подготовка',
+      completed: false
+    },
+    {
+      name: 'Выполнение',
+      completed: false
+    },
+    {
+      name: 'Завершение',
+      completed: false
+    }
   ];
 }
 
 // Вспомогательная функция для генерации стандартных задач, если в БД их нет
-async function generateDefaultTasks(questData?: any): Promise<QuestTask[]> {
-  // Пытаемся сгенерировать через API бэкенда
+async function generateDefaultTasks(questData?: QuestDataInput): Promise<QuestTask[]> {
   try {
+    // Пытаемся получить задачи через API бэкенда
     const backendResult = await generateContentFromBackend(questData || {}, 'tasks');
-    
-    if (backendResult && backendResult.tasks && backendResult.tasks.length > 0) {
-      return backendResult.tasks.map((task: any, index: number) => ({
-        id: task.id || `sub${index + 1}`,
-        title: task.title,
-        description: task.description,
-        completed: index === 0, // Первую задачу считаем выполненной
-        xp: task.xp || 100 + (index * 50), // Увеличиваем XP с каждой задачей
-        progress: index === 0 ? 100 : 0,
-        reward: `+${task.xp || 100 + (index * 50)} XP`
-      }));
+    if (backendResult && typeof backendResult === 'object' && 'tasks' in backendResult) {
+      const tasks = (backendResult as { tasks: unknown[] }).tasks;
+      return tasks.map((task: unknown, index: number) => {
+        const taskObj = task as Record<string, unknown>;
+        return {
+          id: `task-${index + 1}`,
+          title: typeof taskObj.title === 'string' ? taskObj.title : `Задача ${index + 1}`,
+          description: typeof taskObj.description === 'string' ? taskObj.description : '',
+          completed: false,
+          xp: typeof taskObj.xp === 'number' ? taskObj.xp : 10,
+          progress: 0
+        };
+      });
     }
   } catch (error) {
     console.error('Ошибка при генерации задач через API:', error);
   }
-  
-  // Запасной вариант, если API не сработал
+
+  // Запасной вариант - статические задачи
   return [
     {
-      id: 'sub1',
-      title: 'Начать приключение',
-      description: 'Ознакомьтесь с описанием квеста и подготовьтесь к выполнению.',
-      completed: true,
-      xp: 100,
-      progress: 100,
-      reward: '+100 XP'
+      id: 'task-1',
+      title: 'Первая задача',
+      description: 'Описание первой задачи квеста',
+      completed: false,
+      xp: 10,
+      progress: 0
     },
     {
-      id: 'sub2',
-      title: 'Выполнить основное задание',
-      description: 'Выполните основную задачу квеста.',
+      id: 'task-2',
+      title: 'Вторая задача', 
+      description: 'Описание второй задачи квеста',
       completed: false,
-      xp: 200,
-      progress: 0,
-      reward: '+200 XP'
+      xp: 15,
+      progress: 0
     },
     {
-      id: 'sub3',
-      title: 'Завершить квест',
-      description: 'Завершите все необходимые действия и отчитайтесь о выполнении.',
+      id: 'task-3',
+      title: 'Третья задача',
+      description: 'Описание третьей задачи квеста',
       completed: false,
-      xp: 150,
-      progress: 0,
-      reward: '+150 XP'
+      xp: 20,
+      progress: 0
     }
   ];
 }
 
 // Вспомогательная функция для генерации стандартных достижений, если в БД их нет
-async function generateDefaultAchievements(questData?: any): Promise<QuestAchievement[]> {
-  // Пытаемся сгенерировать через API бэкенда
+async function generateDefaultAchievements(questData?: QuestDataInput): Promise<QuestAchievement[]> {
   try {
+    // Пытаемся получить достижения через API бэкенда
     const backendResult = await generateContentFromBackend(questData || {}, 'achievements');
-    
-    if (backendResult && backendResult.achievements && backendResult.achievements.length > 0) {
-      return backendResult.achievements.map((achievement: any, index: number) => ({
-        id: achievement.id || `ach${index + 1}`,
-        title: achievement.title,
-        description: achievement.description,
-        unlocked: index === 0 // Первое достижение считаем разблокированным
-      }));
+    if (backendResult && typeof backendResult === 'object' && 'achievements' in backendResult) {
+      const achievements = (backendResult as { achievements: unknown[] }).achievements;
+      return achievements.map((achievement: unknown, index: number) => {
+        const achievementObj = achievement as Record<string, unknown>;
+        return {
+          id: `achievement-${index + 1}`,
+          title: typeof achievementObj.title === 'string' ? achievementObj.title : `Достижение ${index + 1}`,
+          description: typeof achievementObj.description === 'string' ? achievementObj.description : '',
+          unlocked: false
+        };
+      });
     }
   } catch (error) {
     console.error('Ошибка при генерации достижений через API:', error);
   }
-  
-  // Запасной вариант, если API не сработал
+  // Запасной вариант - статические достижения
   return [
     {
-      id: 'ach1',
-      title: 'Начало пути',
-      description: 'Начать квест',
-      unlocked: true
-    },
-    {
-      id: 'ach2',
-      title: 'Исследователь',
-      description: 'Выполнить основное задание',
+      id: 'achievement-1',
+      title: 'Первое достижение',
+      description: 'Описание первого достижения',
       unlocked: false
     },
     {
-      id: 'ach3',
-      title: 'Мастер квестов',
-      description: 'Завершить квест полностью',
+      id: 'achievement-2',
+      title: 'Второе достижение', 
+      description: 'Описание второго достижения',
+      unlocked: false
+    },
+    {
+      id: 'achievement-3',
+      title: 'Третье достижение',
+      description: 'Описание третьего достижения',
       unlocked: false
     }
   ];
