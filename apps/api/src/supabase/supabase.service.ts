@@ -18,6 +18,9 @@ export class SupabaseService implements OnModuleInit {
     this.supabaseJwtSecret = this.configService.get<string>('SUPABASE_JWT_SECRET') || '';
 
     if (!this.supabaseUrl || !this.supabaseKey) {
+      console.error('Отсутствуют необходимые переменные окружения для Supabase');
+      console.error('SUPABASE_URL:', this.supabaseUrl ? 'установлен' : 'отсутствует');
+      console.error('SUPABASE_SERVICE_KEY:', this.supabaseKey ? 'установлен' : 'отсутствует');
       throw new Error('Отсутствуют необходимые переменные окружения для Supabase');
     }
 
