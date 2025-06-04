@@ -1,0 +1,17 @@
+# nixpacks.toml для API сервиса
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm@8"]
+
+[phases.install]
+cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = ["cd ../.. && pnpm run build:api"]
+
+[start]
+cmd = "cd ../.. && pnpm run start:api"
+
+[variables]
+NODE_ENV = "production"
+PORT = "3001"

@@ -1,0 +1,15 @@
+# nixpacks.toml - Конфигурация для Railway сборки
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm@8"]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["pnpm run build"]
+
+[start]
+cmd = "pnpm run start"
+
+[variables]
+NODE_ENV = "production"
