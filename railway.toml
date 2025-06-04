@@ -1,7 +1,7 @@
-# railway.toml - оптимизированная конфигурация для монорепозитория QuestAI
+# railway.toml - оптимизированная Nixpacks конфигурация для монорепозитория QuestAI
 
 [build]
-builder = "DOCKERFILE"
+builder = "NIXPACKS"
 watchPatterns = [
   "apps/api/**", 
   "apps/web/**", 
@@ -9,7 +9,7 @@ watchPatterns = [
   "package.json", 
   "pnpm-lock.yaml",
   "turbo.json",
-  "Dockerfile"
+  "nixpacks.toml"
 ]
 
 [deploy]
@@ -21,7 +21,6 @@ restartPolicyMaxRetries = 10
 [[services]]
 name = "api"
 root = "apps/api"
-dockerfile = "Dockerfile"
 watchPatterns = [
   "apps/api/**", 
   "packages/ui/**", 
@@ -32,7 +31,6 @@ watchPatterns = [
 [[services]]
 name = "web"  
 root = "apps/web"
-dockerfile = "Dockerfile"
 watchPatterns = [
   "apps/web/**", 
   "packages/ui/**", 
