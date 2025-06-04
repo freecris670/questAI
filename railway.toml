@@ -1,7 +1,7 @@
-# Railway монорепозиторий конфигурация
+# railway.toml - конфигурация для монорепозитория QuestAI
+
 [build]
-builder = "nixpacks"
-nixpacksToml = "nixpacks.toml"
+builder = "DOCKERFILE"
 watchPatterns = ["apps/**", "packages/**"]
 
 [deploy]
@@ -9,7 +9,13 @@ numReplicas = 1
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-# Настройки для монорепозитория
-[monorepo]
-type = "pnpm"
-root = "."
+# Определение сервисов для монорепозитория
+[[services]]
+name = "api"
+root = "apps/api"
+dockerfile = "Dockerfile"
+
+[[services]]
+name = "web"  
+root = "apps/web"
+dockerfile = "Dockerfile"
