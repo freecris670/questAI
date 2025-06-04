@@ -7,7 +7,7 @@ nixPkgs = ["nodejs_20", "pnpm"]
 # Установка зависимостей с использованием заморозки lockfile
 [phases.install]
 # Запускаем в текущей директории, без навигации в другие папки
-cmds = ["pnpm install --frozen-lockfile"]
+cmds = ["pnpm install --no-frozen-lockfile"]
 
 # Оптимизированная сборка всего монорепозитория
 [phases.build]
