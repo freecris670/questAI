@@ -42,7 +42,7 @@ export class AuthService {
           name: userData.name,
         },
       };
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Неверный email или пароль');
     }
   }
@@ -108,7 +108,7 @@ export class AuthService {
     try {
       const userId = await this.supabaseService.getUserIdFromToken(token);
       return { userId };
-    } catch (error) {
+    } catch {
       return null;
     }
   }

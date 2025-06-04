@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { OpenAiService } from '../openai/openai.service';
 import { CreateQuestDto, UpdateQuestDto, GenerateQuestDto, UpdateQuestProgressDto, PublishQuestDto, GenerateContentDto } from './dto';
@@ -23,9 +23,11 @@ export class QuestsService {
   // Время жизни запроса в кэше (15 минут)
   private readonly GENERATION_REQUEST_TTL = 15 * 60 * 1000;
   
+  private readonly logger = new Logger(QuestsService.name);
+  
   constructor(
-    private supabaseService: SupabaseService,
-    private openAiService: OpenAiService,
+    private readonly supabaseService: SupabaseService,
+    private readonly openAiService: OpenAiService,
   ) {
     // Запускаем периодическую очистку устаревших запросов
     this.startGenerationRequestsCleanup();
@@ -146,7 +148,7 @@ export class QuestsService {
                           params.theme.toLowerCase().includes(request.params.theme.toLowerCase());
       
       if (sameUser && similarTheme && request.isTrial === isTrial) {
-        console.log(`Найден существующий запрос на генерацию: ${id}`);
+        this.logger.log(`Найден существующий запрос на генерацию: ${id}`);
         
         // Если запрос уже имеет результат, возвращаем его
         if (request.result) {
@@ -335,7 +337,7 @@ export class QuestsService {
         // Валидация структуры ответа от OpenAI
         questContent = this.validateQuestContent(questContent, questData.description || '');
       } catch (e) {
-        console.error('Ошибка при парсинге JSON ответа от OpenAI:', e, 'Ответ:', response);
+        this.logger.error('Ошибка при парсинге JSON ответа от OpenAI:', e, 'Ответ:', response);
         questContent = {
           title: 'Новый квест',
           description: questData.description || '',
@@ -369,7 +371,7 @@ export class QuestsService {
 
       return data;
     } catch (error) {
-      console.error('Ошибка при создании пробного квеста:', error);
+      this.logger.error('Ошибка при создании пробного квеста:', error);
       throw error;
     }
   }
@@ -405,7 +407,7 @@ export class QuestsService {
         created_at: data.created_at
       };
     } catch (error) {
-      console.error('Ошибка при получении пробного квеста:', error);
+      this.logger.error('Ошибка при получении пробного квеста:', error);
       throw error;
     }
   }
@@ -442,7 +444,7 @@ export class QuestsService {
         status: 'active' // trial квесты всегда активны
       }));
     } catch (error) {
-      console.error('Ошибка при получении trial квестов:', error);
+      this.logger.error('Ошибка при получении trial квестов:', error);
       throw error;
     }
   }
@@ -498,7 +500,7 @@ export class QuestsService {
       .eq('ip_address', ipAddress);
 
     if (deleteError) {
-      console.error(`Ошибка при удалении пробных квестов: ${deleteError.message}`);
+      this.logger.error(`Ошибка при удалении пробных квестов: ${deleteError.message}`);
       // Не выбрасываем ошибку, так как квесты уже мигрированы
     }
 
@@ -516,7 +518,7 @@ export class QuestsService {
       this.activeGenerationRequests.forEach((request, requestId) => {
         if (now - request.timestamp > this.GENERATION_REQUEST_TTL) {
           this.activeGenerationRequests.delete(requestId);
-          console.log(`Очищен устаревший запрос на генерацию: ${requestId}`);
+          this.logger.log(`Очищен устаревший запрос на генерацию: ${requestId}`);
         }
       });
     }, 5 * 60 * 1000); // Проверка каждые 5 минут
@@ -587,7 +589,7 @@ export class QuestsService {
       isTrial
     });
     
-    console.log(`Зарегистрирован новый запрос на генерацию: ${requestId}`);
+    this.logger.log(`Зарегистрирован новый запрос на генерацию: ${requestId}`);
   }
 
   /**
@@ -601,7 +603,7 @@ export class QuestsService {
     if (request) {
       request.result = result;
       this.activeGenerationRequests.set(requestId, request);
-      console.log(`Установлен результат для запроса на генерацию: ${requestId}`);
+      this.logger.log(`Установлен результат для запроса на генерацию: ${requestId}`);
     }
   }
 
@@ -617,13 +619,13 @@ export class QuestsService {
     
     // Если запрос существует и у него есть результат, возвращаем этот результат
     if (exists && existingResult) {
-      console.log(`Возвращаем существующий результат для запроса: ${requestId}`);
+      this.logger.log(`Возвращаем существующий результат для запроса: ${requestId}`);
       return existingResult;
     }
     
     // Если запрос существует, но результата еще нет, ждем некоторое время и проверяем снова
     if (exists) {
-      console.log(`Ожидаем результат для существующего запроса: ${requestId}`);
+      this.logger.log(`Ожидаем результат для существующего запроса: ${requestId}`);
       
       // Ждем до 10 секунд, проверяя каждые 500 мс
       for (let i = 0; i < 120; i++) {
@@ -631,13 +633,13 @@ export class QuestsService {
         
         const request = this.activeGenerationRequests.get(requestId);
         if (request?.result) {
-          console.log(`Получен результат для ожидающего запроса: ${requestId}`);
+          this.logger.log(`Получен результат для ожидающего запроса: ${requestId}`);
           return request.result;
         }
       }
       
       // Если после ожидания результата нет, создаем новый запрос
-      console.log(`Тайм-аут ожидания результата, создаем новый запрос`);
+      this.logger.log(`Тайм-аут ожидания результата, создаем новый запрос`);
     }
     
     // Регистрируем новый запрос
@@ -706,13 +708,13 @@ export class QuestsService {
     
     // Если запрос существует и у него есть результат, возвращаем этот результат
     if (exists && existingResult) {
-      console.log(`Возвращаем существующий результат для пробного запроса: ${requestId}`);
+      this.logger.log(`Возвращаем существующий результат для пробного запроса: ${requestId}`);
       return existingResult;
     }
     
     // Если запрос существует, но результата еще нет, ждем некоторое время и проверяем снова
     if (exists) {
-      console.log(`Ожидаем результат для существующего пробного запроса: ${requestId}`);
+      this.logger.log(`Ожидаем результат для существующего пробного запроса: ${requestId}`);
       
       // Ждем до 10 секунд, проверяя каждые 500 мс
       for (let i = 0; i < 120; i++) {
@@ -720,13 +722,13 @@ export class QuestsService {
         
         const request = this.activeGenerationRequests.get(requestId);
         if (request?.result) {
-          console.log(`Получен результат для ожидающего пробного запроса: ${requestId}`);
+          this.logger.log(`Получен результат для ожидающего пробного запроса: ${requestId}`);
           return request.result;
         }
       }
       
       // Если после ожидания результата нет, создаем новый запрос
-      console.log(`Тайм-аут ожидания результата, создаем новый пробный запрос`);
+      this.logger.log(`Тайм-аут ожидания результата, создаем новый пробный запрос`);
     }
     
     // Регистрируем новый запрос
@@ -864,7 +866,7 @@ export class QuestsService {
       .eq('ip_address', ip);
       
     if (updateError) {
-      console.error('Ошибка при обновлении пробного квеста:', updateError);
+      this.logger.error('Ошибка при обновлении пробного квеста:', updateError);
       throw new Error('Ошибка при обновлении прогресса квеста');
     }
     
@@ -1167,7 +1169,7 @@ export class QuestsService {
         maxTrialQuests: MAX_TRIAL_QUESTS
       };
     } catch (err) {
-      console.error('Ошибка при проверке лимита пробных квестов:', err);
+      this.logger.error('Ошибка при проверке лимита пробных квестов:', err);
       // В случае ошибки возвращаем безопасное значение - разрешаем создание
       return { canCreate: true, questsCreated: 0, maxTrialQuests: MAX_TRIAL_QUESTS };
     }
@@ -1193,7 +1195,7 @@ export class QuestsService {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Ошибка при проверке лимита запросов в минуту:', error);
+        this.logger.error('Ошибка при проверке лимита запросов в минуту:', error);
         // В случае ошибки разрешаем запрос
         return { canCreate: true, requestsInLastMinute: 0 };
       }
@@ -1204,7 +1206,7 @@ export class QuestsService {
         requestsInLastMinute
       };
     } catch (err) {
-      console.error('Ошибка при проверке лимита запросов в минуту:', err);
+      this.logger.error('Ошибка при проверке лимита запросов в минуту:', err);
       // В случае ошибки разрешаем запрос
       return { canCreate: true, requestsInLastMinute: 0 };
     }
@@ -1230,7 +1232,7 @@ export class QuestsService {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Ошибка при проверке лимита запросов в час:', error);
+        this.logger.error('Ошибка при проверке лимита запросов в час:', error);
         // В случае ошибки разрешаем запрос
         return { canCreate: true, requestsInLastHour: 0 };
       }
@@ -1241,7 +1243,7 @@ export class QuestsService {
         requestsInLastHour
       };
     } catch (err) {
-      console.error('Ошибка при проверке лимита запросов в час:', err);
+      this.logger.error('Ошибка при проверке лимита запросов в час:', err);
       // В случае ошибки разрешаем запрос
       return { canCreate: true, requestsInLastHour: 0 };
     }
@@ -1263,13 +1265,13 @@ export class QuestsService {
         });
       
       if (error) {
-        console.error('Ошибка при регистрации попытки создания квеста:', error);
+        this.logger.error('Ошибка при регистрации попытки создания квеста:', error);
         return false;
       }
       
       return true;
     } catch (err) {
-      console.error('Ошибка при регистрации попытки создания квеста:', err);
+      this.logger.error('Ошибка при регистрации попытки создания квеста:', err);
       return false;
     }
   }
@@ -1292,7 +1294,7 @@ export class QuestsService {
         });
 
       if (error) {
-        console.error('Ошибка при вызове upsert_trial_usage:', error);
+        this.logger.error('Ошибка при вызове upsert_trial_usage:', error);
         
         // Если RPC функция не существует, используем альтернативный подход с upsert
         const { data: upsertData, error: upsertError } = await this.supabaseService.adminClient
@@ -1348,7 +1350,7 @@ export class QuestsService {
         return data;
       }
     } catch (err) {
-      console.error('Ошибка при обновлении счетчика пробных квестов:', err);
+      this.logger.error('Ошибка при обновлении счетчика пробных квестов:', err);
       // В случае ошибки вернем 1, чтобы не блокировать создание квеста
       return 1;
     }
@@ -1386,7 +1388,7 @@ export class QuestsService {
           throw new Error(`Неподдерживаемый тип контента: ${contentType}`);
       }
     } catch (error) {
-      console.error(`Ошибка при генерации контента типа ${contentType}:`, error);
+      this.logger.error(`Ошибка при генерации контента типа ${contentType}:`, error);
       // Правильная обработка ошибки с проверкой типа
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       throw new Error(`Не удалось сгенерировать контент: ${errorMessage}`);
@@ -1412,7 +1414,7 @@ export class QuestsService {
       const parsedContent = JSON.parse(content);
       return parsedContent;
     } catch (e) {
-      console.error('Ошибка при парсинге сгенерированных этапов:', e, content);
+      this.logger.error('Ошибка при парсинге сгенерированных этапов:', e, content);
       throw new Error('Не удалось обработать сгенерированные этапы');
     }
   }
@@ -1436,7 +1438,7 @@ export class QuestsService {
       const parsedContent = JSON.parse(content);
       return parsedContent;
     } catch (e) {
-      console.error('Ошибка при парсинге сгенерированных задач:', e, content);
+      this.logger.error('Ошибка при парсинге сгенерированных задач:', e, content);
       throw new Error('Не удалось обработать сгенерированные задачи');
     }
   }
@@ -1460,7 +1462,7 @@ export class QuestsService {
       const parsedContent = JSON.parse(content);
       return parsedContent;
     } catch (e) {
-      console.error('Ошибка при парсинге сгенерированных достижений:', e, content);
+      this.logger.error('Ошибка при парсинге сгенерированных достижений:', e, content);
       throw new Error('Не удалось обработать сгенерированные достижения');
     }
   }

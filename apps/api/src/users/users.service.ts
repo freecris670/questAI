@@ -1,12 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { UserProfileDto, UserStatsDto } from './dto';
-import { IQuest } from '../interfaces/quest.interfaces';
 import { IUserProfile, IUserStats, IUserSubscription } from '../interfaces/user.interfaces';
 
 @Injectable()
 export class UsersService {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(private readonly supabaseService: SupabaseService) {}
 
   /**
    * Получение профиля пользователя
@@ -49,7 +47,7 @@ export class UsersService {
       avatar_url: string;
     }>,
   ): Promise<IUserProfile> {
-    const { data, error } = await this.supabaseService.client
+    const { error } = await this.supabaseService.client
       .from('profiles')
       .update(profileData)
       .eq('id', userId)
@@ -157,7 +155,7 @@ export class UsersService {
   /**
    * Получение списка активных квестов пользователя
    */
-  async getActiveQuests(userId: string): Promise<IQuest[]> {
+  async getActiveQuests(userId: string): Promise<any[]> {
     // Получаем все квесты, которые пользователь начал, но не завершил
     const { data, error } = await this.supabaseService.client
       .from('quest_completions')

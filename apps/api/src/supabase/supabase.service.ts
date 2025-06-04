@@ -10,7 +10,7 @@ export class SupabaseService implements OnModuleInit {
   private supabaseKey!: string;
   private supabaseJwtSecret!: string;
 
-  constructor(private configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
     this.supabaseUrl = this.configService.get<string>('SUPABASE_URL') || '';
@@ -60,14 +60,14 @@ export class SupabaseService implements OnModuleInit {
     const token = authHeader.split(' ')[1];
     
     try {
-      const { data, error } = await this.supabaseClient.auth.getUser(token);
+      const { data } = await this.supabaseClient.auth.getUser(token);
       
-      if (error || !data.user) {
+      if (!data.user) {
         throw new UnauthorizedException('Недействительный токен');
       }
       
       return data.user.id;
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Ошибка проверки токена');
     }
   }

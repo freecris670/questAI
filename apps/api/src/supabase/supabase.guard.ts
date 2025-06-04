@@ -3,7 +3,7 @@ import { SupabaseService } from './supabase.service';
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(private readonly supabaseService: SupabaseService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -20,7 +20,7 @@ export class SupabaseAuthGuard implements CanActivate {
       request.user = { id: userId };
       
       return true;
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Ошибка аутентификации');
     }
   }

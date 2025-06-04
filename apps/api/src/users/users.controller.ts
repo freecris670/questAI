@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation, ApiParam, ApiBearerAuth, ApiResponse } from '@ne
 import { Request } from 'express';
 import { UsersService } from './users.service';
 import { UserProfileDto, UserStatsDto } from './dto';
-import { IQuest } from '../interfaces/quest.interfaces';
 import { SupabaseAuthGuard, User } from '../supabase/supabase.module';
 import { QuestsService } from '../quests/quests.service';
 

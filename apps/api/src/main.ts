@@ -1,10 +1,12 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+  
   // Используем явное приведение типа для Express
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   
@@ -46,24 +48,24 @@ async function bootstrap() {
   
   // Настройка информационного логирования о превышении лимитов запросов
   app.useLogger({
-    log: (message: unknown) => console.log(message),
-    error: (message: unknown) => console.error(message),
+    log: (message: unknown) => logger.log(message),
+    error: (message: unknown) => logger.error(message),
     warn: (message: unknown) => {
       // Отслеживаем превышение лимитов
       if (typeof message === 'string' && message.includes('ThrottlerException')) {
-        console.warn(`[Rate Limit] ${message}`);
+        logger.warn(`[Rate Limit] ${message}`);
       } else {
-        console.warn(message);
+        logger.warn(message);
       }
     },
-    debug: (message: unknown) => console.debug(message),
-    verbose: (message: unknown) => console.log(message),
+    debug: (message: unknown) => logger.debug(message),
+    verbose: (message: unknown) => logger.verbose(message),
   });
 
   // Запускаем приложение
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`Приложение запущено на порту: ${port}`);
-  console.log(`Настроено ограничение запросов: 3 в минуту, 20 в час`);
+  logger.log(`Приложение запущено на порту: ${port}`);
+  logger.log(`Настроено ограничение запросов: 3 в минуту, 20 в час`);
 }
 bootstrap();
