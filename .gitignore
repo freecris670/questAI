@@ -21,7 +21,6 @@ lerna-debug.log*
 apps/web/project-dev.log
 
 # Окружение и секреты
-.env
 .env.*
 !.env.example
 .env.local

@@ -7,74 +7,7 @@
 
 Команда для build API в Railway - запустить nest build в директории apps/api
 Команда для build Web в Railway - запустить next build в директории apps/web
-Команда для build UI в Railway - запустить tsup && tsc --emitDeclarationOnly --declaration --outDir dist в директории packages/ui
 
 Команда для запуска API в Railway - запустить nest start в директории apps/api
 Команда для запуска Web в Railway - запустить next start в директории apps/web
 
-
-
-При последнем запуске деплоя на Railway получил такую ошибку:
-@questai/api:start: AuthController {/api/auth}:
-
-@questai/api:start: Mapped {/api/auth/login, POST} route
-
-@questai/api:start: Mapped {/api/auth/register, POST} route
-
-@questai/api:start: Отсутствуют необходимые переменные окружения для Supabase
-
-@questai/api:start: SUPABASE_URL: отсутствует
-
-@questai/api:start: SUPABASE_SERVICE_KEY: отсутствует
-
-@questai/api:start: /app/apps/api/src/supabase/supabase.service.ts:24
-
-@questai/api:start:       throw new Error('Отсутствуют необходимые переменные окружения для Supabase');
-
-@questai/api:start:             ^
-
-@questai/api:start: 
-
-@questai/api:start: 
-
-@questai/api:start: Error: Отсутствуют необходимые переменные окружения для Supabase
-
-@questai/api:start:     at SupabaseService.onModuleInit (/app/apps/api/src/supabase/supabase.service.ts:24:13)
-
-@questai/api:start:     at MapIterator.iteratee (/app/node_modules/.pnpm/@nestjs+core@11.1.1_@nestjs+common@11.1.1_class-transformer@0.5.1_class-validator@0.14._2561f3f114fd35d159b8c3ff6ee92d90/node_modules/@nestjs/core/hooks/on-module-init.hook.js:22:43)
-
-@questai/api:start:     at MapIterator.next (/app/node_modules/.pnpm/iterare@1.2.1/node_modules/iterare/src/map.ts:9:39)
-
-@questai/api:start:     at IteratorWithOperators.next (/app/node_modules/.pnpm/iterare@1.2.1/node_modules/iterare/src/iterate.ts:19:28)
-
-@questai/api:start:     at Function.from (<anonymous>)
-
-@questai/api:start:     at IteratorWithOperators.toArray (/app/node_modules/.pnpm/iterare@1.2.1/node_modules/iterare/src/iterate.ts:227:22)
-
-@questai/api:start:     at callOperator (/app/node_modules/.pnpm/@nestjs+core@11.1.1_@nestjs+common@11.1.1_class-transformer@0.5.1_class-validator@0.14._2561f3f114fd35d159b8c3ff6ee92d90/node_modules/@nestjs/core/hooks/on-module-init.hook.js:23:10)
-
-@questai/api:start:     at callModuleInitHook (/app/node_modules/.pnpm/@nestjs+core@11.1.1_@nestjs+common@11.1.1_class-transformer@0.5.1_class-validator@0.14._2561f3f114fd35d159b8c3ff6ee92d90/node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:23)
-
-@questai/api:start:     at NestApplication.callInitHook (/app/node_modules/.pnpm/@nestjs+core@11.1.1_@nestjs+common@11.1.1_class-transformer@0.5.1_class-validator@0.14._2561f3f114fd35d159b8c3ff6ee92d90/node_modules/@nestjs/core/nest-application-context.js:242:50)
-
-@questai/api:start:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-
-@questai/api:start:  ELIFECYCLE  Command failed with exit code 1.
-
-@questai/api:start: ERROR: command finished with error: command (/app/apps/api) /root/.nix-profile/bin/pnpm run start exited (1)
-
-@questai/api#start: command (/app/apps/api) /root/.nix-profile/bin/pnpm run start exited (1)
-
- 
-
- Tasks:    1 successful, 2 total
-
-Cached:    1 cached, 2 total
-
-  Time:    4.542s 
-
-Failed:    @questai/api#start
-
- 
-
- ERROR  run failed: command  exited (1)
