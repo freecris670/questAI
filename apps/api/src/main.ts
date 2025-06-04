@@ -48,18 +48,18 @@ async function bootstrap() {
   
   // Настройка информационного логирования о превышении лимитов запросов
   app.useLogger({
-    log: (message: unknown) => logger.log(message),
-    error: (message: unknown) => logger.error(message),
+    log: (message: unknown) => console.log(message),
+    error: (message: unknown) => console.error(message),
     warn: (message: unknown) => {
       // Отслеживаем превышение лимитов
       if (typeof message === 'string' && message.includes('ThrottlerException')) {
-        logger.warn(`[Rate Limit] ${message}`);
+        console.warn(`[Rate Limit] ${message}`);
       } else {
-        logger.warn(message);
+        console.warn(message);
       }
     },
-    debug: (message: unknown) => logger.debug(message),
-    verbose: (message: unknown) => logger.verbose(message),
+    debug: (message: unknown) => console.debug(message),
+    verbose: (message: unknown) => console.log(message),
   });
 
   // Запускаем приложение

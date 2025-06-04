@@ -1,13 +1,9 @@
 packages:
-  # Приложения
-  - 'apps/*'
-  # Общие пакеты
-  - 'packages/*'
-  # API
-  - 'apps/api/*'
-  # Web
-  - 'apps/web/*'
-  # Исключаем папку node_modules
+  - apps/*
+  - packages/*
+  - apps/api/*
+  - apps/web/*
   - '!**/node_modules/**'
-  # Исключаем директории, начинающиеся с точки
   - '!**/.*/**'
+onlyBuiltDependencies:
+  - supabase
