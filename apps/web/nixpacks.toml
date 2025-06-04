@@ -1,4 +1,4 @@
-# nixpacks.toml для Web сервиса
+# nixpacks.toml для Web сервиса - оптимизированный
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
@@ -10,8 +10,14 @@ dependsOn = ["install"]
 cmds = ["cd ../.. && pnpm run build:web"]
 
 [start]
-cmd = "cd ../.. && pnpm run start:web"
+cmd = "cd ../.. && node apps/web/server.js"
 
 [variables]
 NODE_ENV = "production"
 PORT = "3000"
+HOSTNAME = "0.0.0.0"
+
+# Настройки здоровья сервиса
+[healthcheck]
+path = "/"
+timeout = 300

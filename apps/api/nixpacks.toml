@@ -1,4 +1,4 @@
-# nixpacks.toml для API сервиса
+# nixpacks.toml для API сервиса - оптимизированный
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
@@ -10,8 +10,13 @@ dependsOn = ["install"]
 cmds = ["cd ../.. && pnpm run build:api"]
 
 [start]
-cmd = "cd ../.. && pnpm run start:api"
+cmd = "cd ../.. && node apps/api/dist/main.js"
 
 [variables]
 NODE_ENV = "production"
 PORT = "3001"
+
+# Настройки здоровья сервиса
+[healthcheck]
+path = "/api/health"
+timeout = 300

@@ -1,21 +1,41 @@
-# railway.toml - конфигурация для монорепозитория QuestAI
+# railway.toml - оптимизированная конфигурация для монорепозитория QuestAI
 
 [build]
 builder = "DOCKERFILE"
-watchPatterns = ["apps/**", "packages/**"]
+watchPatterns = [
+  "apps/api/**", 
+  "apps/web/**", 
+  "packages/ui/**", 
+  "package.json", 
+  "pnpm-lock.yaml",
+  "turbo.json",
+  "Dockerfile"
+]
 
 [deploy]
 numReplicas = 1
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-# Определение сервисов для монорепозитория
+# Определение сервисов для монорепозитория с оптимизированными watch paths
 [[services]]
 name = "api"
 root = "apps/api"
 dockerfile = "Dockerfile"
+watchPatterns = [
+  "apps/api/**", 
+  "packages/ui/**", 
+  "package.json",
+  "pnpm-lock.yaml"
+]
 
 [[services]]
 name = "web"  
 root = "apps/web"
 dockerfile = "Dockerfile"
+watchPatterns = [
+  "apps/web/**", 
+  "packages/ui/**", 
+  "package.json",
+  "pnpm-lock.yaml"
+]

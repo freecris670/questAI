@@ -7,3 +7,6 @@ packages:
   - '!**/.*/**'
 onlyBuiltDependencies:
   - supabase
+syncInjectedDepsAfterScripts:
+- build
+injectWorkspacePackages: true

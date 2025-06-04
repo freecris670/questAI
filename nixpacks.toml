@@ -1,15 +1,22 @@
-# nixpacks.toml - Конфигурация для Railway сборки
+# nixpacks.toml - Оптимизированная конфигурация для Railway сборки
+
+# Используем Node.js 20 и pnpm без указания версии pnpm
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
+# Установка зависимостей с использованием заморозки lockfile
 [phases.install]
 cmds = ["pnpm install --frozen-lockfile"]
 
+# Оптимизированная сборка всего монорепозитория
 [phases.build]
+dependsOn = ["install"]
 cmds = ["pnpm run build"]
 
+# Команда запуска (переопределяется в настройках сервиса)
 [start]
 cmd = "pnpm run start"
 
+# Переменные окружения
 [variables]
 NODE_ENV = "production"
