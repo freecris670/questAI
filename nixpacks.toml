@@ -9,7 +9,7 @@ nixPkgs = ["nodejs_20", "pnpm"]
 # Установка зависимостей для всего монорепозитория
 [phases.install]
 cmds = [
-  "pnpm install --no-frozen-lockfile",
+  "pnpm install --frozen-lockfile",
   "cd packages/ui && pnpm run build"
 ]
 
