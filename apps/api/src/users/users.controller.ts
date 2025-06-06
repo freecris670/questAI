@@ -94,7 +94,7 @@ export class UsersController {
     if (Array.isArray(ipAddress)) {
       ipAddress = ipAddress[0];
     }
-    const remoteAddress = request.connection?.remoteAddress || '127.0.0.1';
+    const remoteAddress = request.connection?.remoteAddress || '0.0.0.0';
     const ip = ipAddress as string || remoteAddress;
     
     // Вызываем метод миграции пробных квестов

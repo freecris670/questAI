@@ -26,8 +26,10 @@ async function bootstrap() {
   // Настраиваем CORS
   app.enableCors({
     origin: [
-      'http://localhost:3000',
-      'https://localhost:3000',
+      'http://localhost:10000',
+      'https://localhost:10000',
+      'http://localhost:3000', // Оставляем для совместимости с режимом разработки
+      'https://localhost:3000', // Оставляем для совместимости с режимом разработки
       /^https:\/\/.*\.onrender\.com$/,
       process.env.FRONTEND_URL
     ].filter(Boolean),

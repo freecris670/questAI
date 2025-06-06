@@ -49,7 +49,7 @@ export class QuestsService {
     const remoteAddress = request.connection?.remoteAddress ||
       request.socket?.remoteAddress ||
       request.ip ||
-      '127.0.0.1';
+      '0.0.0.0';
     
     // Возвращаем IP из заголовка или из соединения
     return (ipAddress as string) || remoteAddress;
