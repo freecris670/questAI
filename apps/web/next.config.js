@@ -4,7 +4,6 @@ const path = require('path');
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@questai/ui"],
-  output: 'standalone',
   // Отключаем строгие правила ESLint для сборки
   eslint: {
     ignoreDuringBuilds: true,
