@@ -2,19 +2,25 @@
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
+# Установка зависимостей из корня монорепозитория
 [phases.install]
-cmds = ["pnpm install --no-frozen-lockfile"]
+cmds = [
+  "cd /app && pnpm install --no-frozen-lockfile",
+  "cd /app/packages/ui && pnpm run build"
+]
 
+# Сборка Web приложения согласно railway.txt
 [phases.build]
 dependsOn = ["install"]
-cmds = ["pnpm run build"]
+cmds = ["cd /app/apps/web && pnpm run build"]
 
+# Запуск Web сервиса согласно railway.txt
 [start]
-cmd = "node server.js"
+cmd = "cd /app/apps/web && pnpm run start"
 
+# Переменные окружения по умолчанию
 [variables]
 NODE_ENV = "production"
-PORT = "3000"
 HOSTNAME = "0.0.0.0"
 
 # Настройки здоровья сервиса
