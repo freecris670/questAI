@@ -12,7 +12,7 @@ COPY apps/api/package.json ./apps/api/
 COPY packages/ui/package.json ./packages/ui/
 
 # Install only API dependencies
-RUN pnpm install --frozen-lockfile --filter=@questai/api --filter=@questai/ui
+RUN pnpm install --filter=@questai/api --filter=@questai/ui
 
 # Copy source code
 COPY apps/api ./apps/api

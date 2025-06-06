@@ -1,0 +1,33 @@
+services:
+  # API Service
+  - type: web
+    name: questai-api
+    runtime: node
+    rootDir: apps/api
+    buildCommand: cd ../.. && pnpm install && pnpm build:api
+    startCommand: cd apps/api && pnpm start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+  # Web Service
+  - type: web
+    name: questai-web
+    runtime: node
+    rootDir: apps/web
+    buildCommand: cd ../.. && pnpm install && pnpm build
+    startCommand: cd apps/web && pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    plan: free
+    autoDeploy: true
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate

@@ -62,8 +62,8 @@ async function bootstrap() {
 
   // Запускаем приложение
   const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`Приложение запущено на порту: ${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Приложение запущено на порту: ${port}, хост: 0.0.0.0`);
   console.log(`Настроено ограничение запросов: 3 в минуту, 20 в час`);
 }
 bootstrap();
