@@ -28,7 +28,9 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000',
       'https://localhost:3000',
-      /^https:\/\/.*\.railway\.app$/,
+      'https://quest-ai-web.vercel.app',
+      /^https:\/\/.*\.vercel\.app$/,
+      /^https:\/\/.*\.onrender\.com$/,
       process.env.FRONTEND_URL
     ].filter(Boolean),
     credentials: true,
