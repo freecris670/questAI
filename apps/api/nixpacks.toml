@@ -1,22 +1,21 @@
-# nixpacks.toml для API сервиса - оптимизированный
+# nixpacks.toml для API сервиса
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
+# Установка зависимостей из корня монорепозитория
 [phases.install]
-cmds = ["--no-frozen-lockfile"]
+cmds = ["cd /app && pnpm install --no-frozen-lockfile"]
 
+# Сборка API согласно railway.txt
 [phases.build]
 dependsOn = ["install"]
-cmds = ["pnpm run build"]
+cmds = ["cd /app/apps/api && pnpm run build"]
 
+# Запуск API сервиса согласно railway.txt
 [start]
-cmd = "node dist/main.js"
+cmd = "cd /app/apps/api && pnpm run start:prod"
 
+# Переменные окружения по умолчанию
+# Railway автоматически предоставит остальные переменные
 [variables]
 NODE_ENV = "production"
-PORT = "3001"
-
-# Настройки здоровья сервиса
-[healthcheck]
-path = "/api/health"
-timeout = 300

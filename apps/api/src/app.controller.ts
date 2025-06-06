@@ -12,4 +12,13 @@ export class AppController {
   getHealth(): { status: string; version: string } {
     return this.appService.getHealth();
   }
+
+  @Get('health')
+  @ApiOperation({ summary: 'Health check endpoint для Railway' })
+  healthCheck(): { status: string; timestamp: string } {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    };
+  }
 }

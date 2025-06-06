@@ -28,6 +28,7 @@ apps/web/project-dev.log
 .env.development.local
 .env.test.local
 .env.production.local
+.env-archive/
 
 # Файлы IDE и редакторов
 .idea
