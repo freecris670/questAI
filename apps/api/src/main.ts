@@ -28,8 +28,6 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000',
       'https://localhost:3000',
-      'https://quest-ai-web.vercel.app',
-      /^https:\/\/.*\.vercel\.app$/,
       /^https:\/\/.*\.onrender\.com$/,
       process.env.FRONTEND_URL
     ].filter(Boolean),
@@ -63,7 +61,9 @@ async function bootstrap() {
   });
 
   // Запускаем приложение
-  const port = process.env.PORT || 3001;
+  // Render рекомендует использовать PORT со значением по умолчанию 10000
+  // Зарезервированные порты на Render: 18012, 18013, 19099 (нельзя использовать)
+  const port = process.env.PORT || 10000;
   await app.listen(port, '0.0.0.0');
   console.log(`Приложение запущено на порту: ${port}, хост: 0.0.0.0`);
   console.log(`Настроено ограничение запросов: 3 в минуту, 20 в час`);
