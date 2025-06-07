@@ -13,6 +13,8 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: FRONTEND_IPS
+        value: "176.64.6.69,172.71.192.151,10.201.129.68"
       # Другие переменные окружения добавляются через интерфейс Render
     autoDeploy: true
 
@@ -34,5 +36,11 @@ services:
           name: questai-api
           type: web
           property: url
+          append: /api
+      - key: BACKEND_IPS
+        fromService:
+          name: questai-api
+          type: web
+          property: ipAddresses
       # Другие переменные окружения добавляются через интерфейс Render
     autoDeploy: true

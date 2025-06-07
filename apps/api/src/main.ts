@@ -23,16 +23,41 @@ async function bootstrap() {
     }),
   );
   
+  // Формируем список разрешенных источников для CORS
+  const allowedOrigins = [
+    // Локальные URL
+    'http://localhost:10000',
+    'https://localhost:10000',
+    'http://localhost:3000', // Для совместимости с режимом разработки
+    'https://localhost:3000', // Для совместимости с режимом разработки
+    
+    // IP-адреса фронтенда на Render
+    'http://176.64.6.69',
+    'https://176.64.6.69',
+    'http://172.71.192.151',
+    'https://172.71.192.151',
+    'http://10.201.129.68',
+    'https://10.201.129.68',
+    
+    // Домены Render
+    /^https:\/\/.*\.onrender\.com$/,
+    
+    // Переменная окружения для фронтенда
+    process.env.FRONTEND_URL
+  ];
+  
+  // Добавляем IP-адреса из переменной окружения, если она есть
+  if (process.env.FRONTEND_IPS) {
+    const frontendIps = process.env.FRONTEND_IPS.split(',').map(ip => ip.trim());
+    frontendIps.forEach(ip => {
+      allowedOrigins.push(`http://${ip}`);
+      allowedOrigins.push(`https://${ip}`);
+    });
+  }
+  
   // Настраиваем CORS
   app.enableCors({
-    origin: [
-      'http://localhost:10000',
-      'https://localhost:10000',
-      'http://localhost:3000', // Оставляем для совместимости с режимом разработки
-      'https://localhost:3000', // Оставляем для совместимости с режимом разработки
-      /^https:\/\/.*\.onrender\.com$/,
-      process.env.FRONTEND_URL
-    ].filter(Boolean),
+    origin: allowedOrigins.filter(Boolean),
     credentials: true,
   });
   
