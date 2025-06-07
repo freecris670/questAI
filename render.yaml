@@ -15,6 +15,10 @@ services:
         value: 10000
       - key: FRONTEND_IPS
         value: "176.64.6.69,172.71.192.151,10.201.129.68"
+      - key: SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID
+        value: "" # Заполнить через интерфейс Render
+      - key: SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET
+        value: "" # Заполнить через интерфейс Render
       # Другие переменные окружения добавляются через интерфейс Render
     autoDeploy: true
 
@@ -42,5 +46,11 @@ services:
           name: questai-api
           type: web
           property: ipAddresses
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: "" # Заполнить через интерфейс Render
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: "" # Заполнить через интерфейс Render
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        value: "" # Заполнить через интерфейс Render
       # Другие переменные окружения добавляются через интерфейс Render
     autoDeploy: true
