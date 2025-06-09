@@ -7,10 +7,11 @@ import { useState } from 'react';
 
 interface GoogleAuthButtonProps {
   onError?: (error: string) => void;
+  onSuccess?: () => void;
   className?: string;
 }
 
-export function GoogleAuthButton({ onError, className }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ onError, onSuccess, className }: GoogleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
@@ -34,6 +35,7 @@ export function GoogleAuthButton({ onError, className }: GoogleAuthButtonProps) 
 
       // Если signInWithOAuth успешно, браузер будет перенаправлен на Google
       // После авторизации пользователь вернется на /auth/callback
+      onSuccess?.();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при входе через Google.';
       console.error('Google OAuth error:', error);
@@ -47,7 +49,7 @@ export function GoogleAuthButton({ onError, className }: GoogleAuthButtonProps) 
     <Button 
       type="button" 
       variant="outline" 
-      className={`w-full flex items-center justify-center gap-2 ${className || ''}`}
+      className={`w-full flex items-center justify-center gap-2 cursor-pointer ${className || ''}`}
       onClick={handleGoogleSignIn}
       disabled={isLoading}
     >
