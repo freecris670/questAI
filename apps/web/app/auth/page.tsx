@@ -68,7 +68,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-[#F7F9FB] flex flex-col">
       <MainHeader />
-      <main className="flex-grow flex items-center justify-center px-4 py-12 pt-24">
+      <main className="flex-grow flex items-center justify-center py-12 pt-20">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
           <h1 className="text-3xl font-semibold text-[#2553A1] text-center mb-6">
             Добро пожаловать в QuestAI
