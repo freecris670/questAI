@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MainHeader } from '@/components/layout/MainHeader';
 import { MainFooter } from '@/components/layout/MainFooter';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { supabase } from '@/lib/supabase';
-import { FaGoogle } from 'react-icons/fa';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -62,20 +62,6 @@ export default function AuthPage() {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при входе через Google.';
-      setError(errorMessage);
     }
   };
 
@@ -188,15 +174,10 @@ export default function AuthPage() {
             </div>
           </div>
 
-          <Button 
-            type="button" 
-            variant="outline" 
-            className="w-full mt-6 flex items-center justify-center gap-2"
-            onClick={handleGoogleSignIn}
-          >
-            <FaGoogle className="text-[#4285F4]" />
-            <span>Google</span>
-          </Button>
+          <GoogleAuthButton 
+            className="w-full mt-6" 
+            onError={setError}
+          />
         </div>
       </main>
       <MainFooter />
