@@ -92,19 +92,13 @@ export const MainHeader = () => {
               <div className="mr-3 text-right hidden sm:block">
                 <div className="font-medium text-gray-800 dark:text-gray-200">Гость</div>
               </div>
-              {/* Кнопки входа/регистрации */}
+              {/* Кнопка входа */}
               <Button 
                 variant="outline" 
                 className="border-quest-blue text-quest-blue hover:bg-quest-blue/10 hover:text-quest-blue px-4 py-2 rounded-md text-sm md:text-base h-auto cursor-pointer"
                 onClick={() => setIsLoginModalOpen(true)}
               >
                 Вход
-              </Button>
-              <Button 
-                className="bg-quest-emerald hover:bg-quest-emerald/90 text-white px-4 py-2 rounded-md text-sm md:text-base h-auto cursor-pointer"
-                onClick={() => setIsLoginModalOpen(true)}
-              >
-                Регистрация
               </Button>
             </div>
           )}
