@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { FaGoogle } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase';
 import { useState } from 'react';
+import { config } from '@/lib/config';
 
 interface GoogleAuthButtonProps {
   onError?: (error: string) => void;
@@ -21,7 +22,7 @@ export function GoogleAuthButton({ onError, onSuccess, className }: GoogleAuthBu
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${config.authRedirectUrl}/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',

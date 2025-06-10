@@ -12,6 +12,9 @@ export const config = {
   // Supabase конфигурация
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+
+  // URL для редиректа после аутентификации
+  authRedirectUrl: process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL || 'http://localhost:10000',
 };
 
 /**

@@ -52,5 +52,7 @@ services:
         value: "" # Заполнить через интерфейс Render
       - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
         value: "" # Заполнить через интерфейс Render
+      - key: NEXT_PUBLIC_AUTH_REDIRECT_URL
+        value: "https://questai-web.onrender.com" # URL для редиректа после аутентификации
       # Другие переменные окружения добавляются через интерфейс Render
     autoDeploy: true

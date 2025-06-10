@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { config } from '@/lib/config';
 
 interface UserProfile {
   id: string;
@@ -210,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${config.authRedirectUrl}/auth/callback`,
       },
     });
   };
