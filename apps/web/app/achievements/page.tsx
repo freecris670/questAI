@@ -168,7 +168,127 @@ export default function AchievementsPage() {
               </TabsList>
             </div>
             
-            <TabsContent value={activeTab} className="p-6">
+            <TabsContent value="all" className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAchievements.map((achievement) => (
+                  <div 
+                    key={achievement.id} 
+                    className={`border rounded-lg p-5 transition-all ${
+                      achievement.unlocked 
+                        ? 'border-quest-blue/30 bg-quest-blue/5 dark:border-quest-blue/20 dark:bg-quest-blue/10' 
+                        : 'border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        achievement.unlocked 
+                          ? 'bg-quest-blue/20 text-quest-blue' 
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                      }`}>
+                        {achievement.icon}
+                      </div>
+                      <Badge className={`${getRarityColor(achievement.rarity)}`}>
+                        {getRarityName(achievement.rarity)}
+                      </Badge>
+                    </div>
+                    
+                    <h3 className={`text-lg font-medium mb-2 ${
+                      achievement.unlocked 
+                        ? 'text-gray-900 dark:text-white' 
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}>
+                      {achievement.title}
+                    </h3>
+                    
+                    <p className={`text-sm mb-4 ${
+                      achievement.unlocked 
+                        ? 'text-gray-600 dark:text-gray-300' 
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>
+                      {achievement.description}
+                    </p>
+                    
+                    {achievement.unlocked && achievement.date && (
+                      <div className="text-xs text-quest-blue font-medium">
+                        Разблокировано {achievement.date}
+                      </div>
+                    )}
+                    
+                    {!achievement.unlocked && achievement.progress !== undefined && achievement.maxProgress && (
+                      <div className="mt-4">
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          <span>Прогресс</span>
+                          <span>{achievement.progress}/{achievement.maxProgress}</span>
+                        </div>
+                        <Progress value={(achievement.progress / achievement.maxProgress) * 100} className="h-1.5" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="unlocked" className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAchievements.map((achievement) => (
+                  <div 
+                    key={achievement.id} 
+                    className={`border rounded-lg p-5 transition-all ${
+                      achievement.unlocked 
+                        ? 'border-quest-blue/30 bg-quest-blue/5 dark:border-quest-blue/20 dark:bg-quest-blue/10' 
+                        : 'border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        achievement.unlocked 
+                          ? 'bg-quest-blue/20 text-quest-blue' 
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                      }`}>
+                        {achievement.icon}
+                      </div>
+                      <Badge className={`${getRarityColor(achievement.rarity)}`}>
+                        {getRarityName(achievement.rarity)}
+                      </Badge>
+                    </div>
+                    
+                    <h3 className={`text-lg font-medium mb-2 ${
+                      achievement.unlocked 
+                        ? 'text-gray-900 dark:text-white' 
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}>
+                      {achievement.title}
+                    </h3>
+                    
+                    <p className={`text-sm mb-4 ${
+                      achievement.unlocked 
+                        ? 'text-gray-600 dark:text-gray-300' 
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>
+                      {achievement.description}
+                    </p>
+                    
+                    {achievement.unlocked && achievement.date && (
+                      <div className="text-xs text-quest-blue font-medium">
+                        Разблокировано {achievement.date}
+                      </div>
+                    )}
+                    
+                    {!achievement.unlocked && achievement.progress !== undefined && achievement.maxProgress && (
+                      <div className="mt-4">
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          <span>Прогресс</span>
+                          <span>{achievement.progress}/{achievement.maxProgress}</span>
+                        </div>
+                        <Progress value={(achievement.progress / achievement.maxProgress) * 100} className="h-1.5" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="locked" className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredAchievements.map((achievement) => (
                   <div 

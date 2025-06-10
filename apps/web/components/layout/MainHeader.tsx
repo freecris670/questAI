@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Star as StarIcon, Settings, User, LogOut, ChevronDown } from 'lucide-react';
+import { Moon, Sun, Star as StarIcon, Settings, User, LogOut, ChevronDown, CreditCard } from 'lucide-react';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { useAuth } from '@/lib/hooks/useAuth';
 import {
@@ -56,12 +56,14 @@ export const MainHeader = () => {
           {/* Навигационные ссылки */}
           <div className="hidden sm:flex items-center space-x-6">
             {isAuthenticated && (
-              <Link 
-                href="/dashboard" 
-                className="text-gray-700 dark:text-gray-200 hover:text-quest-blue dark:hover:text-blue-400 font-medium"
-              >
-                Дашборд
-              </Link>
+              <>
+                <Link 
+                  href="/dashboard" 
+                  className="text-gray-700 dark:text-gray-200 hover:text-quest-blue dark:hover:text-blue-400 font-medium"
+                >
+                  Дашборд
+                </Link>
+              </>
             )}
             <Link 
               href="/my-quests" 
@@ -124,6 +126,12 @@ export const MainHeader = () => {
                   <Link href="/settings" className="flex items-center cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Настройки</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/subscription" className="flex items-center cursor-pointer">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    <span>Подписка</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

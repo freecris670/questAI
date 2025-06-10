@@ -12,8 +12,7 @@
     "start:web": "cd apps/web && pnpm run start",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint",
-    "lint:fix": "turbo run lint --fix",
-    "postinstall": "turbo run build"
+    "lint:fix": "turbo run lint --fix"
   },
   "engines": {
     "node": ">=18.0.0",

@@ -8,6 +8,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { OpenAiModule } from './openai/openai.module';
 import { ThrottlerConfigModule } from './throttler/throttler.module';
 import { AuthModule } from './auth/auth.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AuthModule } from './auth/auth.module';
     UsersModule,
     OpenAiModule,
     AuthModule, // Добавляем модуль авторизации
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

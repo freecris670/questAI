@@ -69,6 +69,10 @@ yarn.lock
 .windsurfrules
 .windsurf/
 
+#Cursor
+.cursorrules
+.cursor
+
 # Дизайн
 дизайн страниц/
 
