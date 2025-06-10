@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Маршруты, требующие авторизации
 const PROTECTED_ROUTES = [
@@ -59,49 +59,57 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options);
+          });
         },
       },
     }
   );
   
   // Проверяем сессию
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  // Защита маршрутов, требующих авторизации
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => path.startsWith(route));
-  if (isProtectedRoute && !session) {
-    const redirectUrl = new URL('/auth', request.url);
-    redirectUrl.searchParams.set('redirect', path);
-    return NextResponse.redirect(redirectUrl);
-  }
-  
-  // Перенаправление авторизованных пользователей с авторизационных страниц
-  const isAuthRoute = AUTH_ROUTES.some(route => path.startsWith(route));
-  if (isAuthRoute && session) {
-    // Если пользователь не завершил онбординг, перенаправляем на соответствующую страницу
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('completed_onboarding')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (profile && !profile.completed_onboarding) {
-        return NextResponse.redirect(new URL('/auth/preferences', request.url));
-      }
-      
-      // Если пользователь полностью авторизован, отправляем на страницу квестов
-      return NextResponse.redirect(new URL('/my-quests', request.url));
-    } catch (error) {
-      console.error('Ошибка при получении профиля в middleware:', error);
-      return NextResponse.redirect(new URL('/my-quests', request.url));
+  try {
+    // Используем getUser() для безопасной проверки авторизации
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      console.error('Ошибка при получении пользователя в middleware:', error);
     }
+    
+    // Защита маршрутов, требующих авторизации
+    const isProtectedRoute = PROTECTED_ROUTES.some(route => path.startsWith(route));
+    if (isProtectedRoute && !user) {
+      const redirectUrl = new URL('/auth', request.url);
+      redirectUrl.searchParams.set('redirect', path);
+      return NextResponse.redirect(redirectUrl);
+    }
+    
+    // Перенаправление авторизованных пользователей с авторизационных страниц
+    const isAuthRoute = AUTH_ROUTES.some(route => path.startsWith(route));
+    if (isAuthRoute && user) {
+      // Если пользователь не завершил онбординг, перенаправляем на соответствующую страницу
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('completed_onboarding')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile && !profile.completed_onboarding) {
+          return NextResponse.redirect(new URL('/auth/preferences', request.url));
+        }
+        
+        // Если пользователь полностью авторизован, отправляем на страницу квестов
+        return NextResponse.redirect(new URL('/my-quests', request.url));
+      } catch (error) {
+        console.error('Ошибка при получении профиля в middleware:', error);
+        return NextResponse.redirect(new URL('/my-quests', request.url));
+      }
+    }
+  } catch (error) {
+    console.error('Критическая ошибка в middleware:', error);
+    // В случае критической ошибки пропускаем middleware
+    return NextResponse.next();
   }
   
   return supabaseResponse;

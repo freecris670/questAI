@@ -4,13 +4,24 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Star as StarIcon } from 'lucide-react';
+import { Moon, Sun, Star as StarIcon, Settings, User, LogOut, ChevronDown } from 'lucide-react';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { useAuth } from '@/lib/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 export const MainHeader = () => {
   const { theme, setTheme } = useTheme();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const router = useRouter();
   
   // Получаем данные авторизации из контекста
   const { user, profile, loading } = useAuth();
@@ -23,6 +34,16 @@ export const MainHeader = () => {
     level?: number;
   }
   const userLevel = (profile as ProfileWithLevel | null)?.level ?? 1;
+
+  // Функция выхода из системы
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Ошибка при выходе:', error);
+    }
+  };
   
   return (
     <header className="bg-white dark:bg-gray-800 shadow-[0_2px_4px_rgba(0,0,0,0.05)] fixed top-0 left-0 right-0 z-50">
@@ -63,29 +84,55 @@ export const MainHeader = () => {
           </Button>
           
           {isAuthenticated ? (
-            <div className="flex items-center gap-4">
-              {/* Информация о пользователе */}
-              <div className="flex items-center">
-                <div className="mr-3 text-right hidden sm:block">
-                  <div className="font-medium text-gray-800 dark:text-gray-200">{displayName}</div>
-                  {!loading && (
-                    <div className="flex items-center text-sm text-amber-500">
-                      <StarIcon className="h-4 w-4 mr-1 fill-amber-500" />
-                      <span>Уровень {userLevel}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 h-auto p-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  {/* Информация о пользователе */}
+                  <div className="flex items-center">
+                    <div className="mr-3 text-right hidden sm:block">
+                      <div className="font-medium text-gray-800 dark:text-gray-200">{displayName}</div>
+                      {!loading && (
+                        <div className="flex items-center text-sm text-amber-500">
+                          <StarIcon className="h-4 w-4 mr-1 fill-amber-500" />
+                          <span>Уровень {userLevel}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                {/* Аватар с индикатором уровня */}
-                <div className="relative">
-                  <div className="h-10 w-10 rounded-full overflow-hidden">
-                    <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                    {/* Аватар с индикатором уровня */}
+                    <div className="relative">
+                      <div className="h-10 w-10 rounded-full overflow-hidden">
+                        <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-gray-800">
+                        {userLevel}
+                      </div>
+                    </div>
                   </div>
-                  <div className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-gray-800">
-                    {userLevel}
-                  </div>
-                </div>
-              </div>
-            </div>
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Мой аккаунт</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Профиль</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="flex items-center cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Настройки</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-600 dark:text-red-400">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Выйти</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <div className="flex items-center gap-4">
               {/* Информация о госте */}

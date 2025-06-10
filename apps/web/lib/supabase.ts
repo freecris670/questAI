@@ -1,4 +1,5 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 let supabaseInstance: SupabaseClient | null = null;
 
@@ -15,7 +16,7 @@ function getSupabaseClient() {
       throw new Error('Отсутствуют необходимые переменные окружения для Supabase');
     }
 
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+    supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey);
   }
 
   return supabaseInstance;
