@@ -41,3 +41,11 @@ export interface GenerateQuestDto {
   length: 'short' | 'medium' | 'long';
   userId: string;
 }
+
+export interface IQuest {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  // ... existing code ...
+}

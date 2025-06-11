@@ -1,12 +1,12 @@
 "use client"; // Required for useState and event handlers
 
 import Link from 'next/link';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { Moon, Sun, Star as StarIcon, Settings, User, LogOut, ChevronDown, CreditCard } from 'lucide-react';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useUIStore } from '@/stores/ui.store';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,16 +15,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 export const MainHeader = () => {
   const { theme, setTheme } = useTheme();
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { openLoginModal } = useUIStore();
   const router = useRouter();
   
-  // Получаем данные авторизации из контекста
-  const { user, profile, loading } = useAuth();
+  // Получаем данные авторизации из стора через хук
+  const { user, profile, loading, signOut } = useAuth();
 
   const isAuthenticated = !!user;
   const displayName = profile?.character_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Гость';
@@ -38,7 +37,7 @@ export const MainHeader = () => {
   // Функция выхода из системы
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
       router.push('/');
     } catch (error) {
       console.error('Ошибка при выходе:', error);
@@ -151,7 +150,7 @@ export const MainHeader = () => {
               <Button 
                 variant="outline" 
                 className="border-quest-blue text-quest-blue hover:bg-quest-blue/10 hover:text-quest-blue px-4 py-2 rounded-md text-sm md:text-base h-auto cursor-pointer"
-                onClick={() => setIsLoginModalOpen(true)}
+                onClick={openLoginModal}
               >
                 Вход
               </Button>
@@ -159,7 +158,7 @@ export const MainHeader = () => {
           )}
         </nav>
       </div>
-      <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      <LoginModal />
     </header>
   );
 };

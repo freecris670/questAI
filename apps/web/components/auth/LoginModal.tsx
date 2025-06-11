@@ -1,174 +1,149 @@
 "use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Assuming you have an Input component from Shadcn/ui
-import { X } from 'lucide-react'; // For the close icon
 import { useAuth } from '@/lib/hooks/useAuth';
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { useUIStore } from '@/stores/ui.store';
+import { Button } from '@repo/ui/components/ui/button';
+import { Input } from '@repo/ui/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@repo/ui/components/ui/dialog';
+import { FaGoogle, FaGithub } from 'react-icons/fa';
+import { useState } from 'react';
 
-interface LoginModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+export function LoginModal() {
+  const { signInWithOAuth, signIn, signUp } = useAuth();
+  const { isLoginModalOpen, closeLoginModal } = useUIStore();
 
-export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-  const { signIn, signUp } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  if (!isOpen) return null;
+
+  const handleOAuthSignIn = async (provider: 'google' | 'github') => {
+    try {
+      await signInWithOAuth(provider);
+      closeLoginModal();
+    } catch (err) {
+      console.error('Sign in failed', err);
+      setError('Не удалось войти через OAuth.');
+    }
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    
-    try {
-      let result;
-      
-      if (isLogin) {
-        // Логин
-        result = await signIn(email, password);
-      } else {
-        // Регистрация
-        result = await signUp(email, password);
-      }
-      
-      if (result.error) {
-        setError(result.error.message || 'Произошла ошибка. Пожалуйста, попробуйте снова.');
-      } else {
-        // Успешный вход/регистрация
-        onClose();
-      }
-    } catch (err) {
-      setError('Произошла ошибка при подключении к серверу.');
-      console.error(err);
-    } finally {
-      setLoading(false);
+
+    const result = isLoginView
+      ? await signIn(email, password)
+      : await signUp(email, password, name);
+
+    if (result.error) {
+      setError(result.error.message);
+    } else {
+      closeLoginModal(); // Закрыть при успехе
     }
+    setLoading(false);
   };
-  
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
+
+  const toggleView = () => {
+    setIsLoginView(!isLoginView);
     setError(null);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md relative">
-        <button 
-          onClick={onClose} 
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
-        >
-          <X size={24} />
-        </button>
-        <h2 className="text-2xl font-semibold text-quest-blue mb-6 text-center">
-          {isLogin ? 'Вход в QuestAI' : 'Регистрация в QuestAI'}
-        </h2>
-        
+    <Dialog open={isLoginModalOpen} onOpenChange={closeLoginModal}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{isLoginView ? 'Вход в QuestAI' : 'Регистрация в QuestAI'}</DialogTitle>
+          <DialogDescription>
+            {isLoginView ? 'Введите свои данные для входа.' : 'Создайте аккаунт, чтобы начать.'}
+          </DialogDescription>
+        </DialogHeader>
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
             {error}
           </div>
         )}
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
-              <Input 
-                type="text" 
-                id="name" 
+
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            {!isLoginView && (
+              <Input
+                id="name"
+                placeholder="Ваше имя"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ваше имя" 
-                className="w-full" 
-                required={!isLogin}
+                required
               />
-            </div>
-          )}
-          
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <Input 
-              type="email" 
-              id="email" 
+            )}
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com" 
-              className="w-full" 
+              required
+            />
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
-            <Input 
-              type="password" 
-              id="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" 
-              className="w-full" 
-              required 
-              minLength={6}
-            />
-          </div>
-          
-          <button 
-            type="submit" 
-            style={{
-              width: '100%',
-              backgroundColor: '#10B981', // quest-emerald
-              color: '#FFFFFF',
-              fontWeight: 600,
-              fontSize: '1rem',
-              padding: '0.625rem 1rem',
-              marginTop: '0.5rem',
-              borderRadius: '0.375rem',
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-            }}
-            disabled={loading}
-          >
-            {loading ? 'Подождите...' : isLogin ? 'Войти' : 'Зарегистрироваться'}
-          </button>
-          
-          <div className="text-center mt-4">
-            <button 
-              type="button" 
-              onClick={toggleMode}
-              className="text-sm text-quest-blue hover:underline cursor-pointer"
-            >
-              {isLogin ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войдите'}
-            </button>
-          </div>
+          <DialogFooter>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Подождите...' : isLoginView ? 'Войти' : 'Зарегистрироваться'}
+            </Button>
+          </DialogFooter>
         </form>
         
-        <div className="relative mt-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">или продолжить с</span>
-          </div>
-        </div>
-
-        <GoogleAuthButton 
-          className="w-full mt-6" 
-          onError={setError}
-          onSuccess={onClose}
-        />
+        <div className="relative my-4">
+           <div className="absolute inset-0 flex items-center">
+             <span className="w-full border-t" />
+           </div>
+           <div className="relative flex justify-center text-xs uppercase">
+             <span className="bg-background px-2 text-muted-foreground">
+               Или продолжить с
+             </span>
+           </div>
+         </div>
         
-        <p className="text-xs text-gray-500 mt-6 text-center">
-          Нажимая "{isLogin ? 'Войти' : 'Зарегистрироваться'}", вы принимаете наши <a href="/privacy" className="underline hover:text-quest-blue">Условия использования</a>.
+        <div className="grid grid-cols-2 gap-4">
+          <Button
+            variant="outline"
+            onClick={() => handleOAuthSignIn('google')}
+          >
+            <FaGoogle className="mr-2 h-4 w-4" />
+            Google
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleOAuthSignIn('github')}
+          >
+            <FaGithub className="mr-2 h-4 w-4" />
+            GitHub
+          </Button>
+        </div>
+        
+        <p className="px-8 text-center text-sm text-muted-foreground mt-4">
+          <button onClick={toggleView} className="underline underline-offset-4 hover:text-primary">
+            {isLoginView ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войдите'}
+          </button>
         </p>
-      </div>
-    </div>
+
+      </DialogContent>
+    </Dialog>
   );
-};
+}

@@ -1,16 +1,24 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, UseGuards, Req, ForbiddenException, Optional } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { QuestsService } from './quests.service';
+import { QuestGenerationService } from './quest-generation.service';
+import { TrialQuestService } from './trial-quest.service';
 import { CreateQuestDto, GenerateQuestDto, UpdateQuestDto, UpdateQuestProgressDto, PublishQuestDto, GenerateContentDto } from './dto';
 import { IQuest, IQuestDetails, IGeneratedQuestData, IQuestProgress } from '../interfaces/quest.interfaces';
 import { SupabaseAuthGuard, User } from '../supabase/supabase.module';
+import { AuthGuard } from '../auth/auth.guard';
+import { getIpFromRequest } from '../utils/get-ip-from-request';
 
 @ApiTags('Квесты')
 @Controller('quests')
 export class QuestsController {
-  constructor(private readonly questsService: QuestsService) {}
+  constructor(
+    private readonly questsService: QuestsService,
+    private readonly questGenerationService: QuestGenerationService,
+    private readonly trialQuestService: TrialQuestService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Получить список квестов' })
@@ -39,102 +47,57 @@ export class QuestsController {
   @ApiOperation({ summary: 'Получить все пробные квесты по IP адресу' })
   async getTrialQuests(@Req() request: Request) {
     // Получаем IP-адрес пользователя
-    const ip = this.questsService.getIpFromRequest(request);
+    const ip = getIpFromRequest(request);
     
     return this.questsService.getTrialQuestsByIp(ip);
   }
 
+  @UseGuards(AuthGuard)
   @Post()
   @ApiOperation({ summary: 'Создать новый квест' })
   @ApiBearerAuth()
   async create(
-    @User('id') userId: string,
     @Body() createQuestDto: CreateQuestDto,
-    @Req() request: Request
+    @Request() req
   ) {
-    // Проверяем, является ли это запросом от неавторизованного пользователя
-    if (createQuestDto.trial_user) {
-      // Запрос от неавторизованного пользователя - создаем trial квест
-      // Получаем IP-адрес для идентификации неавторизованного пользователя
-      const ip = this.questsService.getIpFromRequest(request);
-      
-      // Проверяем, не превышен ли лимит пробных квестов
-      const trialLimits = await this.questsService.checkTrialQuestsLimit(ip);
-      if (!trialLimits.canCreate) {
-        throw new ForbiddenException('Превышен лимит пробных квестов');
-      }
-      
-      // Создаем пробный квест
-      const result = await this.questsService.createTrialQuest({
-        ...createQuestDto,
-        ip_address: ip
-      });
-      
-      // Увеличиваем счетчик пробных квестов
-      await this.questsService.incrementTrialQuestsCount(ip);
-      
-      return result;
-    } else if (!userId) {
-      // Если не указан trial_user и нет userId, значит запрос неавторизованный
-      throw new ForbiddenException('Для создания квеста необходима авторизация');
-    }
-    
-    // Запрос от авторизованного пользователя - создаем обычный квест
-    return this.questsService.create({ ...createQuestDto, user_id: userId });
+    return this.questsService.create(createQuestDto, req.user.sub);
   }
 
   @Post('generate')
-  @ApiOperation({ summary: 'Сгенерировать новый квест с помощью AI' })
-  @ApiBearerAuth()
-  @Throttle({ short: { ttl: 60000, limit: 3 }, medium: { ttl: 3600000, limit: 20 } }) // 3 запроса в минуту, 20 в час
-  async generate(
-    @Body() generateQuestDto: GenerateQuestDto,
-    @Req() request: Request,
-    @User('id') userId?: string
-  ): Promise<IGeneratedQuestData> {
-    // Получаем IP-адрес для отслеживания лимита
-    const ip = this.questsService.getIpFromRequest(request);
-    
-    // Проверяем лимиты частоты запросов
-    const minuteRateLimit = await this.questsService.checkMinuteRateLimit(ip);
-    if (!minuteRateLimit.canCreate) {
-      throw new Error('Превышен лимит запросов (3 в минуту). Пожалуйста, подождите.');
+  async generate(@Body() generateQuestDto: GenerateQuestDto, @Req() req: Request, @Request() nestReq) {
+    // Если есть авторизованный пользователь, используем QuestGenerationService
+    if (nestReq.user) {
+      return this.questGenerationService.generateQuest(generateQuestDto, nestReq.user.sub);
     }
     
-    const hourRateLimit = await this.questsService.checkHourRateLimit(ip);
-    if (!hourRateLimit.canCreate) {
-      throw new Error('Превышен лимит запросов (20 в час). Пожалуйста, подождите.');
-    }
-    
-    // Регистрируем попытку создания квеста
-    await this.questsService.recordQuestAttempt(ip);
-    
-    // Если userId не передан или равен 'anonymous', генерируем пробный квест
-    if (!userId || generateQuestDto.userId === 'anonymous') {
-      return this.questsService.generateTrialQuest(generateQuestDto, ip);
-    }
-    
-    // Иначе генерируем обычный квест для авторизованного пользователя
-    return this.questsService.generateQuest(userId, generateQuestDto, ip);
+    // Иначе, это пробный квест
+    const ip = getIpFromRequest(req);
+    return this.trialQuestService.generateTrialQuest(generateQuestDto, ip);
   }
 
-  @Put(':id/save')
+  @UseGuards(AuthGuard)
+  @Put(':id')
   @ApiOperation({ summary: 'Сохранение/обновление квеста' })
   @ApiParam({ name: 'id', description: 'ID квеста' })
   @ApiBearerAuth()
   async update(
     @Param('id') id: string,
     @Body() updateQuestDto: UpdateQuestDto,
+    @Request() req
   ) {
-    return this.questsService.update(id, updateQuestDto);
+    return this.questsService.update(id, updateQuestDto, req.user.sub);
   }
 
+  @UseGuards(AuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Удалить квест' })
   @ApiParam({ name: 'id', description: 'ID квеста' })
   @ApiBearerAuth()
-  async remove(@Param('id') id: string) {
-    return this.questsService.remove(id);
+  async remove(
+    @Param('id') id: string,
+    @Request() req
+  ) {
+    return this.questsService.remove(id, req.user.sub);
   }
 
   @Patch(':id/progress')
@@ -159,21 +122,21 @@ export class QuestsController {
     @Body() updateProgressDto: UpdateQuestProgressDto,
   ): Promise<IQuestProgress> {
     // Получаем IP адрес пользователя из заголовков
-    const ip = this.questsService.getIpFromRequest(request);
+    const ip = getIpFromRequest(request);
     return this.questsService.updateTrialProgress(id, ip, updateProgressDto);
   }
 
-  @Post(':id/publish')
+  @UseGuards(AuthGuard)
+  @Put(':id/publish')
   @ApiOperation({ summary: 'Публикация квеста' })
   @ApiParam({ name: 'id', description: 'ID квеста' })
   @ApiBearerAuth()
-  @UseGuards(SupabaseAuthGuard)
-  async publishQuest(
-    @User('id') userId: string,
+  async publish(
     @Param('id') id: string,
     @Body() publishQuestDto: PublishQuestDto,
+    @Request() req
   ) {
-    return this.questsService.publishQuest(id, userId, publishQuestDto);
+    return this.questsService.publishQuest(id, req.user.sub, publishQuestDto);
   }
 
   @Get(':id/achievements')
@@ -192,7 +155,7 @@ export class QuestsController {
   @ApiOperation({ summary: 'Проверка лимита созданных пробных квестов' })
   async checkTrialQuestsLimit(@Req() request: Request) {
     // Получаем IP-адрес пользователя
-    const ip = this.questsService.getIpFromRequest(request);
+    const ip = getIpFromRequest(request);
     
     // Получаем информацию о лимитах
     const trialLimits = await this.questsService.checkTrialQuestsLimit(ip);
@@ -220,7 +183,7 @@ export class QuestsController {
   @ApiOperation({ summary: 'Увеличение счетчика пробных квестов' })
   async incrementTrialQuestsCount(@Req() request: Request) {
     // Получаем IP-адрес пользователя
-    const ip = this.questsService.getIpFromRequest(request);
+    const ip = getIpFromRequest(request);
     return { questsCreated: await this.questsService.incrementTrialQuestsCount(ip) };
   }
   
@@ -230,5 +193,20 @@ export class QuestsController {
   @Throttle({ short: { ttl: 60000, limit: 5 } }) // 5 запросов в минуту
   async generateContent(@Body() generateContentDto: GenerateContentDto) {
     return this.questsService.generateContent(generateContentDto);
+  }
+
+  @Get('trial')
+  async findTrialQuests(@Req() req: Request) {
+    const ip = getIpFromRequest(req);
+    return this.trialQuestService.findTrialQuestsByIp(ip);
+  }
+
+  @Get('trial/:id')
+  async findTrialQuestById(@Param('id') id: string) {
+    const quest = await this.trialQuestService.findTrialQuestById(id);
+    if (!quest) {
+      throw new Error('Пробный квест не найден');
+    }
+    return quest;
   }
 }
